@@ -3,14 +3,15 @@ interface ValueCard {
   id: number;
   name: string;
   column: string; // Part1: "unassigned", "notImportant", "important", "veryImportant"
-  // Part2: "core" or "additional" (for cards carried over from veryImportant)
+  // Part2: same as Part1
+  // Part3: "core" or "additional" (for cards carried over from veryImportant)
   order: number;
 }
 
 interface AppState {
-  currentPart: "part1" | "part2" | "part3" | "review";
+  currentPart: "part1" | "part2" | "part3" | "part4" | "review";
   cards: ValueCard[];
-  // In part 3, user can add final statements for each core value (by card id)
+  // In part 4, user can add final statements for each core value (by card id)
   finalStatements: { [cardId: number]: string };
 }
 
@@ -94,77 +95,77 @@ class App {
       "CHALLENGE",
       "CHANGE",
       "COMFORT",
-      "COMMITMENT",
-      "COMPASSION",
-      "CONTRIBUTION",
-      "COOPERATION",
-      "COURTESY",
-      "CREATIVITY",
-      "DEPENDABILITY",
-      "DUTY",
-      "ECOLOGY",
-      "EXCITEMENT",
-      "FAITHFULNESS",
-      "FAME",
-      "FAMILY",
-      "FITNESS",
-      "FLEXIBILITY",
-      "FORGIVENESS",
-      "FRIENDSHIP",
-      "FUN",
-      "GENEROSITY",
-      "GENUINENESS",
-      "GOD'S WILL",
-      "GROWTH",
-      "HEALTH",
-      "HELPFULNESS",
-      "HONESTY",
-      "HOPE",
-      "HUMILITY",
-      "HUMOR",
-      "INDEPENDENCE",
-      "INDUSTRY",
-      "INNER PEACE",
-      "INTIMACY",
-      "JUSTICE",
-      "KNOWLEDGE",
-      "LEISURE",
-      "LOVED",
-      "LOVING",
-      "MASTERY",
-      "MINDFULNESS",
-      "MODERATION",
-      "MONOGAMY",
-      "NONCONFORMITY",
-      "NURTURANCE",
-      "OPENNESS",
-      "ORDER",
-      "PASSION",
-      "PLEASURE",
-      "POPULARITY",
-      "POWER",
-      "PURPOSE",
-      "RATIONALITY",
-      "REALISM",
-      "RESPONSIBILITY",
-      "RISK",
-      "ROMANCE",
-      "SAFETY",
-      "SELF-ACCEPTANCE",
-      "SELF-CONTROL",
-      "SELF-ESTEEM",
-      "SELF-KNOWLEDGE",
-      "SERVICE",
-      "SEXUALITY",
-      "SIMPLICITY",
-      "SOLITUDE",
-      "SPIRITUALITY",
-      "STABILITY",
-      "TOLERANCE",
-      "TRADITION",
-      "VIRTUE",
-      "WEALTH",
-      "WORLD PEACE",
+      // "COMMITMENT",
+      // "COMPASSION",
+      // "CONTRIBUTION",
+      // "COOPERATION",
+      // "COURTESY",
+      // "CREATIVITY",
+      // "DEPENDABILITY",
+      // "DUTY",
+      // "ECOLOGY",
+      // "EXCITEMENT",
+      // "FAITHFULNESS",
+      // "FAME",
+      // "FAMILY",
+      // "FITNESS",
+      // "FLEXIBILITY",
+      // "FORGIVENESS",
+      // "FRIENDSHIP",
+      // "FUN",
+      // "GENEROSITY",
+      // "GENUINENESS",
+      // "GOD'S WILL",
+      // "GROWTH",
+      // "HEALTH",
+      // "HELPFULNESS",
+      // "HONESTY",
+      // "HOPE",
+      // "HUMILITY",
+      // "HUMOR",
+      // "INDEPENDENCE",
+      // "INDUSTRY",
+      // "INNER PEACE",
+      // "INTIMACY",
+      // "JUSTICE",
+      // "KNOWLEDGE",
+      // "LEISURE",
+      // "LOVED",
+      // "LOVING",
+      // "MASTERY",
+      // "MINDFULNESS",
+      // "MODERATION",
+      // "MONOGAMY",
+      // "NONCONFORMITY",
+      // "NURTURANCE",
+      // "OPENNESS",
+      // "ORDER",
+      // "PASSION",
+      // "PLEASURE",
+      // "POPULARITY",
+      // "POWER",
+      // "PURPOSE",
+      // "RATIONALITY",
+      // "REALISM",
+      // "RESPONSIBILITY",
+      // "RISK",
+      // "ROMANCE",
+      // "SAFETY",
+      // "SELF-ACCEPTANCE",
+      // "SELF-CONTROL",
+      // "SELF-ESTEEM",
+      // "SELF-KNOWLEDGE",
+      // "SERVICE",
+      // "SEXUALITY",
+      // "SIMPLICITY",
+      // "SOLITUDE",
+      // "SPIRITUALITY",
+      // "STABILITY",
+      // "TOLERANCE",
+      // "TRADITION",
+      // "VIRTUE",
+      // "WEALTH",
+      // "WORLD PEACE",
     ];
     const sampleCards: ValueCard[] = values.map((name, index) => ({
       id: index + 1,
@@ -199,18 +200,18 @@ class App {
     document.getElementById("toPart2")?.addEventListener("click", () => {
       const newState = this.undoManager.getState();
       newState.currentPart = "part2";
-      // In Part2, we carry over only the "veryImportant" cards.
+      // In Part2, we only keep the "veryImportant" cards and move them to "unassigned"
       newState.cards = newState.cards
         .filter((c) => c.column === "veryImportant")
-        .map((c, idx) => ({ ...c, column: "core", order: idx })); // default assign all to core initially
+        .map((c) => ({ ...c, column: "unassigned" }));
       this.updateState(newState);
     });
     document.getElementById("backToPart1")?.addEventListener("click", () => {
       const newState = this.undoManager.getState();
       newState.currentPart = "part1";
-      // Restore Part1: for simplicity, move cards back to "veryImportant" if they were in core/additional.
+      // Restore Part1: move cards back to their original positions
       newState.cards.forEach((c) => {
-        if (c.column === "core" || c.column === "additional") {
+        if (c.column === "unassigned") {
           c.column = "veryImportant";
         }
       });
@@ -218,12 +219,48 @@ class App {
     });
     document.getElementById("toPart3")?.addEventListener("click", () => {
       const newState = this.undoManager.getState();
-      newState.currentPart = "part3";
+      const veryImportantCount = newState.cards.filter((c) => c.column === "veryImportant").length;
+      if (veryImportantCount <= 5) {
+        // If 5 or fewer values in "Very important to me", skip to Part 4
+        newState.currentPart = "part4";
+        // Move all "veryImportant" cards to "core"
+        newState.cards = newState.cards
+          .filter((c) => c.column === "veryImportant")
+          .map((c, idx) => ({ ...c, column: "core", order: idx }));
+      } else {
+        // Otherwise, proceed to Part 3
+        newState.currentPart = "part3";
+        // Move all "veryImportant" cards to "core"
+        newState.cards = newState.cards
+          .filter((c) => c.column === "veryImportant")
+          .map((c, idx) => ({ ...c, column: "core", order: idx }));
+      }
       this.updateState(newState);
     });
     document.getElementById("backToPart2")?.addEventListener("click", () => {
       const newState = this.undoManager.getState();
       newState.currentPart = "part2";
+      // Restore Part2: move cards back to their original positions
+      newState.cards.forEach((c) => {
+        if (c.column === "core" || c.column === "additional") {
+          c.column = "veryImportant";
+        }
+      });
+      this.updateState(newState);
+    });
+    document.getElementById("toPart4")?.addEventListener("click", () => {
+      const newState = this.undoManager.getState();
+      const coreCount = newState.cards.filter((c) => c.column === "core").length;
+      if (coreCount > 5) {
+        alert("You can only have 5 core values! Please move some values to 'Also Something I Want' before continuing.");
+        return;
+      }
+      newState.currentPart = "part4";
+      this.updateState(newState);
+    });
+    document.getElementById("backToPart3")?.addEventListener("click", () => {
+      const newState = this.undoManager.getState();
+      newState.currentPart = "part3";
       this.updateState(newState);
     });
     document.getElementById("finish")?.addEventListener("click", () => {
@@ -319,7 +356,7 @@ class App {
       partElem.style.display = "block";
     }
     // Render cards for the current part.
-    if (this.state.currentPart === "part1") {
+    if (this.state.currentPart === "part1" || this.state.currentPart === "part2") {
       // Clear containers
       [
         "unassignedContainer",
@@ -346,14 +383,13 @@ class App {
           container.appendChild(cardElem);
         }
       });
-    } else if (this.state.currentPart === "part2") {
-      // Clear containers for part2.
+    } else if (this.state.currentPart === "part3") {
+      // Clear containers for part3
       ["coreContainer", "additionalContainer"].forEach((id) => {
         const container = document.getElementById(id);
         if (container) container.innerHTML = "";
       });
       this.state.cards.forEach((card) => {
-        // In part2, only cards coming from part1's "veryImportant" are present.
         if (card.column === "core" || card.column === "additional") {
           const containerId = card.column + "Container";
           const container = document.getElementById(containerId);
@@ -370,7 +406,7 @@ class App {
           }
         }
       });
-    } else if (this.state.currentPart === "part3") {
+    } else if (this.state.currentPart === "part4") {
       // Render text inputs for each core value.
       const finalStatements = document.getElementById("finalStatements");
       if (finalStatements) {
@@ -398,6 +434,46 @@ class App {
       const reviewContent = document.getElementById("reviewContent");
       if (reviewContent) {
         reviewContent.innerHTML = "";
+        
+        // Add the visualization grid
+        const grid = document.createElement("div");
+        grid.className = "values-grid";
+        
+        // Create sections for each category
+        const categories = [
+          { title: "Core Values (F*CK YEAH)", column: "core" },
+          { title: "Important To Me", column: "important" },
+          { title: "Very Important To Me", column: "veryImportant" },
+          { title: "Not Important To Me", column: "notImportant" }
+        ];
+        
+        categories.forEach(category => {
+          const section = document.createElement("div");
+          section.className = "grid-section";
+          const title = document.createElement("h3");
+          title.textContent = category.title;
+          section.appendChild(title);
+          
+          const values = this.state.cards
+            .filter(c => c.column === category.column)
+            .map(c => c.name);
+          
+          if (values.length > 0) {
+            const list = document.createElement("ul");
+            values.forEach(value => {
+              const li = document.createElement("li");
+              li.textContent = value;
+              list.appendChild(li);
+            });
+            section.appendChild(list);
+          }
+          
+          grid.appendChild(section);
+        });
+        
+        reviewContent.appendChild(grid);
+        
+        // Add the final statements
         const title = document.createElement("h3");
         title.textContent = "Your Core Values & Statements:";
         reviewContent.appendChild(title);

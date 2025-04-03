@@ -17,14 +17,10 @@
       </div>
     </header>
 
-    <!-- Part 1: Sorting -->
+    <!-- Part 1: Initial Sorting -->
     <section id="part1" class="exercise-part">
       <h2>Part 1: Initial Sorting</h2>
       <div class="columns">
-        <div class="column" data-column="unassigned">
-          <h3>Unassigned</h3>
-          <div class="card-container" id="unassignedContainer"></div>
-        </div>
         <div class="column" data-column="veryImportant">
           <h3>Very important to me</h3>
           <div class="card-container" id="veryImportantContainer"></div>
@@ -41,9 +37,32 @@
       <button id="toPart2">Next</button>
     </section>
 
-    <!-- Part 2: Narrowing Down -->
+    <!-- Part 2: Further Sorting -->
     <section id="part2" class="exercise-part" style="display: none;">
-      <h2>Part 2: Narrowing Down</h2>
+      <h2>Part 2: Further Sorting</h2>
+      <p>Take the values from the "Not important to me" and "Important to me" columns and put them aside.</p>
+      <p>Create 3 columns again: "Very important to me", "Important to me" and "Not important to me" and do the same exercise as you did in Part 1, but with the "Very important to me" values only.</p>
+      <div class="columns">
+        <div class="column" data-column="veryImportant">
+          <h3>Very important to me</h3>
+          <div class="card-container" id="veryImportantContainer"></div>
+        </div>
+        <div class="column" data-column="important">
+          <h3>Important to me</h3>
+          <div class="card-container" id="importantContainer"></div>
+        </div>
+        <div class="column" data-column="notImportant">
+          <h3>Not important to me</h3>
+          <div class="card-container" id="notImportantContainer"></div>
+        </div>
+      </div>
+      <button id="backToPart1">Back</button>
+      <button id="toPart3">Next</button>
+    </section>
+
+    <!-- Part 3: Narrowing Down -->
+    <section id="part3" class="exercise-part" style="display: none;">
+      <h2>Part 3: Narrowing Down</h2>
       <div class="columns">
         <div class="column" data-column="core">
           <h3>F*CK YEAH (Core Values, max 5)</h3>
@@ -54,15 +73,15 @@
           <div class="card-container" id="additionalContainer"></div>
         </div>
       </div>
-      <button id="backToPart1">Back</button>
-      <button id="toPart3">Next</button>
+      <button id="backToPart2">Back</button>
+      <button id="toPart4">Next</button>
     </section>
 
-    <!-- Part 3: Final Statements -->
-    <section id="part3" class="exercise-part" style="display: none;">
-      <h2>Part 3: Final Statements</h2>
+    <!-- Part 4: Final Statements -->
+    <section id="part4" class="exercise-part" style="display: none;">
+      <h2>Part 4: Final Statements</h2>
       <div id="finalStatements"></div>
-      <button id="backToPart2">Back</button>
+      <button id="backToPart3">Back</button>
       <button id="finish">Finish</button>
     </section>
 

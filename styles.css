@@ -57,3 +57,42 @@ body {
     cursor: grab;
   }
   
+  .values-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2em;
+    margin-bottom: 2em;
+    padding: 1em;
+    background: #f8f9fa;
+    border-radius: 4px;
+  }
+  
+  .grid-section {
+    background: white;
+    padding: 1em;
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  
+  .grid-section h3 {
+    margin-top: 0;
+    color: #495057;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.5em;
+  }
+  
+  .grid-section ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  
+  .grid-section li {
+    padding: 0.5em 0;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .grid-section li:last-child {
+    border-bottom: none;
+  }
+  
