@@ -273,7 +273,8 @@ class App {
       });
       container.addEventListener("drop", (e) => {
         e.preventDefault();
-        const cardId = Number(e.dataTransfer?.getData("text/plain"));
+        const dragEvent = e as DragEvent;
+        const cardId = Number(dragEvent.dataTransfer?.getData("text/plain"));
         const targetColumn = (
           container.parentElement as HTMLElement
         ).getAttribute("data-column");
@@ -322,9 +323,9 @@ class App {
       // Clear containers
       [
         "unassignedContainer",
-        "notImportantContainer",
-        "importantContainer",
         "veryImportantContainer",
+        "importantContainer",
+        "notImportantContainer",
       ].forEach((id) => {
         const container = document.getElementById(id);
         if (container) container.innerHTML = "";
