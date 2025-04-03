@@ -94,7 +94,7 @@ class App {
       "CARING",
       "CHALLENGE",
       "CHANGE",
-      "COMFORT",
+      // "COMFORT",
       // "COMMITMENT",
       // "COMPASSION",
       // "CONTRIBUTION",
@@ -200,10 +200,22 @@ class App {
     document.getElementById("toPart2")?.addEventListener("click", () => {
       const newState = this.undoManager.getState();
       newState.currentPart = "part2";
-      // In Part2, we only keep the "veryImportant" cards and move them to "unassigned"
-      newState.cards = newState.cards
-        .filter((c) => c.column === "veryImportant")
-        .map((c) => ({ ...c, column: "unassigned" }));
+      
+      // Get all cards that were in "veryImportant" from Part 1
+      const veryImportantCards = newState.cards.filter(card => card.column === "veryImportant");
+      
+      // Move these cards to "unassigned" and remove all other cards
+      newState.cards = veryImportantCards.map(card => ({
+        ...card,
+        column: "unassigned"
+      }));
+      
+      // Log the state for debugging
+      console.log("Transitioning to Part 2:", {
+        totalCards: newState.cards.length,
+        cards: newState.cards.map(c => ({ name: c.name, column: c.column }))
+      });
+      
       this.updateState(newState);
     });
     document.getElementById("backToPart1")?.addEventListener("click", () => {
@@ -356,20 +368,20 @@ class App {
       partElem.style.display = "block";
     }
     // Render cards for the current part.
-    if (this.state.currentPart === "part1" || this.state.currentPart === "part2") {
-      // Clear containers
+    if (this.state.currentPart === "part1") {
+      // Clear containers for Part 1
       [
-        "unassignedContainer",
-        "veryImportantContainer",
-        "importantContainer",
-        "notImportantContainer",
+        "part1-unassignedContainer",
+        "part1-veryImportantContainer",
+        "part1-importantContainer",
+        "part1-notImportantContainer",
       ].forEach((id) => {
         const container = document.getElementById(id);
         if (container) container.innerHTML = "";
       });
-      // Render each card into its container.
+      // Render each card into its Part 1 container.
       this.state.cards.forEach((card) => {
-        const containerId = card.column + "Container";
+        const containerId = "part1-" + card.column + "Container"; // Use Part 1 prefix
         const container = document.getElementById(containerId);
         if (container) {
           const cardElem = document.createElement("div");
@@ -381,6 +393,43 @@ class App {
             e.dataTransfer?.setData("text/plain", card.id.toString());
           });
           container.appendChild(cardElem);
+        }
+      });
+    } else if (this.state.currentPart === "part2") {
+      // Clear containers for Part 2
+      [
+        "part2-unassignedContainer",
+        "part2-veryImportantContainer",
+        "part2-importantContainer",
+        "part2-notImportantContainer",
+      ].forEach((id) => {
+        const container = document.getElementById(id);
+        if (container) container.innerHTML = "";
+      });
+      
+      // Log the state for debugging (can be removed later)
+      // console.log("Rendering Part 2:", {
+      //   totalCards: this.state.cards.length,
+      //   cards: this.state.cards.map(c => ({ name: c.name, column: c.column }))
+      // });
+      
+      // In Part 2, show all cards in their current Part 2 columns
+      this.state.cards.forEach((card) => {
+        const containerId = "part2-" + card.column + "Container"; // Use Part 2 prefix
+        const container = document.getElementById(containerId);
+        if (container) {
+          const cardElem = document.createElement("div");
+          cardElem.className = "card";
+          cardElem.draggable = true;
+          cardElem.textContent = card.name;
+          cardElem.dataset.cardId = card.id.toString();
+          cardElem.addEventListener("dragstart", (e) => {
+            e.dataTransfer?.setData("text/plain", card.id.toString());
+          });
+          container.appendChild(cardElem);
+        } else {
+          // Log error if container not found (can be removed later)
+          // console.error(`Container not found for card ${card.name} in column ${card.column}`);
         }
       });
     } else if (this.state.currentPart === "part3") {
@@ -412,7 +461,11 @@ class App {
       if (finalStatements) {
         finalStatements.innerHTML = "";
         const coreCards = this.state.cards.filter((c) => c.column === "core");
-        coreCards.forEach((card) => {
+        
+        // Sort coreCards alphabetically by name for consistent order and tab index
+        coreCards.sort((a, b) => a.name.localeCompare(b.name));
+        
+        coreCards.forEach((card, index) => {
           const wrapper = document.createElement("div");
           wrapper.className = "final-statement";
           const label = document.createElement("label");
@@ -420,6 +473,7 @@ class App {
           const input = document.createElement("input");
           input.type = "text";
           input.value = this.state.finalStatements[card.id] || "";
+          input.tabIndex = index + 1; // Set explicit tabindex for inputs (1 to N)
           input.addEventListener("change", () => {
             const newState = this.undoManager.getState();
             newState.finalStatements[card.id] = input.value;
@@ -429,6 +483,13 @@ class App {
           wrapper.appendChild(input);
           finalStatements.appendChild(wrapper);
         });
+        
+        // Set tabindex for buttons after the inputs
+        const backBtn = document.getElementById("backToPart3") as HTMLButtonElement | null;
+        const finishBtn = document.getElementById("finish") as HTMLButtonElement | null;
+        const nextTabIndex = coreCards.length + 1;
+        if (finishBtn) finishBtn.tabIndex = nextTabIndex; // Finish button comes next
+        if (backBtn) backBtn.tabIndex = nextTabIndex + 1; // Back button comes after Finish
       }
     } else if (this.state.currentPart === "review") {
       const reviewContent = document.getElementById("reviewContent");
@@ -439,12 +500,10 @@ class App {
         const grid = document.createElement("div");
         grid.className = "values-grid";
         
-        // Create sections for each category
+        // Create sections for core values and additional values
         const categories = [
           { title: "Core Values (F*CK YEAH)", column: "core" },
-          { title: "Important To Me", column: "important" },
-          { title: "Very Important To Me", column: "veryImportant" },
-          { title: "Not Important To Me", column: "notImportant" }
+          { title: "Also Something I Want", column: "additional" }
         ];
         
         categories.forEach(category => {
@@ -514,8 +573,36 @@ function runTests() {
     }
   }
 
+  // Test Part 1 to Part 2 transition
+  const app = new App();
+  const initialState = app.undoManager.getState();
+  
+  // Test initial state
+  assert(initialState.currentPart === "part1", "Initial part should be part1");
+  assert(initialState.cards.length > 0, "Should have cards in initial state");
+  assert(initialState.cards.every(c => c.column === "unassigned"), "All cards should start in unassigned");
+
+  // Test moving cards in Part 1
+  const part1State = app.undoManager.getState();
+  part1State.cards[0].column = "veryImportant";
+  app.updateState(part1State);
+  
+  // Test transition to Part 2
+  const toPart2State = app.undoManager.getState();
+  toPart2State.currentPart = "part2";
+  const veryImportantCards = toPart2State.cards.filter(card => card.column === "veryImportant");
+  toPart2State.cards = veryImportantCards.map(card => ({
+    ...card,
+    column: "unassigned"
+  }));
+  app.updateState(toPart2State);
+  
+  const part2State = app.undoManager.getState();
+  assert(part2State.currentPart === "part2", "Should be in part2 after transition");
+  assert(part2State.cards.length > 0, "Should have cards in part2");
+  assert(part2State.cards.every(c => c.column === "unassigned"), "All cards should be in unassigned in part2");
+
   // Test UndoManager
-  const initialState = { value: 1 };
   const um = new UndoManager(initialState);
   let state = um.getState();
   assert(state.value === 1, "Initial state should be 1");
