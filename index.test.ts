@@ -20,6 +20,19 @@ beforeEach(() => {
   }
 
   document.body.innerHTML = `
+    <div id="addValueForm" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h3>Add New Value</h3>
+            <label for="newValueName">Value Name:</label>
+            <input type="text" id="newValueName" required>
+            <label for="newValueDesc">Description:</label>
+            <textarea id="newValueDesc" rows="3"></textarea>
+            <div class="modal-buttons">
+                <button id="saveNewValueBtn">Save</button>
+                <button id="cancelNewValueBtn">Cancel</button>
+            </div>
+        </div>
+    </div>
     <div id="part1" class="exercise-part">Part 1 Content
         <div data-column="unassigned"><div id="part1-unassignedContainer" class="card-container"></div></div>
         <div data-column="veryImportant"><div id="part1-veryImportantContainer" class="card-container"></div></div>
@@ -306,6 +319,168 @@ describe('Values Exercise App', () => {
       window.confirm = originalConfirm;
   });
 
+  // --- Tests for Adding Custom Values ---
+  test('saveNewValue adds a custom value card', () => {
+    // Arrange: Need access to the private method or trigger via UI
+    // We'll simulate the input values and call the method directly for simplicity
+    const name = 'MY CUSTOM VALUE';
+    const description = 'This is important to me.';
+    (document.getElementById('newValueName') as HTMLInputElement).value = name;
+    (document.getElementById('newValueDesc') as HTMLTextAreaElement).value = description;
+    const initialCardCount = app.undoManager.getState().cards.length;
+
+    // Act
+    (app as any).saveNewValue(); // Access private method for test
+
+    // Assert
+    const newState = app.undoManager.getState();
+    expect(newState.cards.length).toBe(initialCardCount + 1);
+    const newCard = newState.cards[newState.cards.length - 1];
+    if (!newCard) throw new Error('Test failed: New card not found after add');
+    expect(newCard.name).toBe(name);
+    expect(newCard.description).toBe(description);
+    expect(newCard.isCustom).toBe(true);
+    expect(newCard.column).toBe('unassigned');
+    expect(newCard.id).toBeLessThan(0); // Custom IDs are negative
+  });
+
+  test('saveNewValue prevents duplicate names', () => {
+    // Arrange: Add one custom card first
+    const name = 'MY CUSTOM VALUE';
+    (document.getElementById('newValueName') as HTMLInputElement).value = name;
+    (document.getElementById('newValueDesc') as HTMLTextAreaElement).value = 'Desc 1';
+    (app as any).saveNewValue(); 
+    const stateAfterFirstAdd = app.undoManager.getState();
+    const cardCountAfterFirst = stateAfterFirstAdd.cards.length;
+
+    // Act: Try to add another with the same name (case-insensitive)
+    (document.getElementById('newValueName') as HTMLInputElement).value = name.toLowerCase();
+    (document.getElementById('newValueDesc') as HTMLTextAreaElement).value = 'Desc 2';
+    (app as any).saveNewValue();
+
+    // Assert: State should not have changed, card count same
+    const stateAfterSecondAttempt = app.undoManager.getState();
+    expect(stateAfterSecondAttempt.cards.length).toBe(cardCountAfterFirst);
+    // Alert would have been called - we could spy on it if needed
+  });
+
+  // --- Tests for Editing Descriptions ---
+  test('startEditingDescription sets editingDescriptionCardId', () => {
+      const cardToEditId = app.undoManager.getState().cards[0]!.id; // Use non-null assertion
+      expect(app.undoManager.getState().editingDescriptionCardId).toBeNull();
+
+      // Act
+      (app as any).startEditingDescription(cardToEditId);
+
+      // Assert
+      expect(app.undoManager.getState().editingDescriptionCardId).toBe(cardToEditId);
+  });
+
+  test('saveDescriptionEdit updates card description and clears editingId', () => {
+      // Arrange: Start editing the first card
+      const cards = app.undoManager.getState().cards;
+      const cardToEdit = cards[0]!; // Use non-null assertion
+      if (!cardToEdit) throw new Error('Test setup failed: No cards found');
+      const cardId = cardToEdit.id;
+      const originalDesc = cardToEdit.description || VALUES.find((v: {name: string}) => v.name === cardToEdit.name)?.description;
+      const newDesc = 'My edited description.';
+      (app as any).startEditingDescription(cardId);
+
+      // Act
+      (app as any).saveDescriptionEdit(cardId, newDesc);
+
+      // Assert
+      const newState = app.undoManager.getState();
+      expect(newState.editingDescriptionCardId).toBeNull();
+      const updatedCard = newState.cards.find(c => c.id === cardId);
+      if (!updatedCard) throw new Error('Test failed: Updated card not found');
+      expect(updatedCard.description).toBe(newDesc);
+      // Ensure other card descriptions weren't affected (simple check)
+      if (cards.length > 1) {
+          const otherCard = newState.cards.find(c => c.id === cards[1]!.id); // Use non-null assertion
+          if (!otherCard) throw new Error('Test setup failed: Second card not found');
+          expect(otherCard.description).not.toBe(newDesc);
+      }
+  });
+
+    test('cancelDescriptionEdit clears editingId without saving', () => {
+      // Arrange: Start editing the first card
+      const cards = app.undoManager.getState().cards;
+      const cardToEdit = cards[0]!; // Use non-null assertion
+      if (!cardToEdit) throw new Error('Test setup failed: No cards found');
+      const cardId = cardToEdit.id;
+      const originalDesc = cardToEdit.description; // May be undefined initially
+      (app as any).startEditingDescription(cardId);
+      // Simulate typing something into the textarea (though it's not rendered here)
+
+      // Act
+      (app as any).cancelDescriptionEdit();
+
+      // Assert
+      const newState = app.undoManager.getState();
+      expect(newState.editingDescriptionCardId).toBeNull();
+      const notUpdatedCard = newState.cards.find(c => c.id === cardId);
+      if (!notUpdatedCard) throw new Error('Test failed: Card not found after cancel');
+      // Explicitly handle potential undefined originalDesc
+      if (originalDesc === undefined) {
+          expect(notUpdatedCard.description).toBeUndefined();
+      } else {
+          expect(notUpdatedCard.description).toBe(originalDesc);
+      }
+  });
+
+  // --- Test Review Page Rendering with Custom/Edited Descriptions ---
+  test('Review page renders custom and edited descriptions correctly', () => {
+      // Arrange: 
+      // 1. Add a custom value
+      const customName = 'CUSTOM VAL';
+      const customDesc = 'My custom description';
+      (document.getElementById('newValueName') as HTMLInputElement).value = customName;
+      (document.getElementById('newValueDesc') as HTMLTextAreaElement).value = customDesc;
+      (app as any).saveNewValue();
+      
+      // 2. Edit description of a built-in value (e.g., ACCEPTANCE)
+      let state = app.undoManager.getState();
+      const builtInCard = state.cards.find(c => c.name === 'ACCEPTANCE')!;
+      const builtInCardId = builtInCard.id;
+      const editedBuiltInDesc = 'My edited acceptance';
+      (app as any).saveDescriptionEdit(builtInCardId, editedBuiltInDesc);
+      
+      // 3. Move cards to core/additional for review page
+      state = app.undoManager.getState();
+      state.currentPart = 'review';
+      state.cards.forEach(card => {
+          if (card.name === 'ACCEPTANCE' || card.name === customName) {
+              card.column = 'core';
+          } else {
+              card.column = 'additional'; // Move others somewhere else
+          }
+      });
+      app.updateState(state);
+      app = new App(); // Re-render with final state
+
+      // Act: Trigger render (implicitly done by new App() or manually if needed)
+      // (app as any).render(); // Usually constructor calls render
+
+      // Assert: Check the rendered HTML in the review section
+      const reviewContent = document.getElementById('reviewContent');
+      expect(reviewContent).not.toBeNull();
+      const coreSection = reviewContent!.querySelector('.grid-section:first-child'); // Assuming core is first
+      expect(coreSection).not.toBeNull();
+
+      const coreNames = Array.from(coreSection!.querySelectorAll('.review-value-name')).map(el => el.textContent);
+      const coreDescs = Array.from(coreSection!.querySelectorAll('.review-value-description')).map(el => el.textContent);
+      
+      // Find the indices based on names (order might vary slightly if sorting changes)
+      const acceptanceIndex = coreNames.indexOf('ACCEPTANCE');
+      const customIndex = coreNames.indexOf(customName);
+
+      expect(acceptanceIndex).toBeGreaterThan(-1);
+      expect(customIndex).toBeGreaterThan(-1);
+      expect(coreDescs[acceptanceIndex]).toBe(editedBuiltInDesc);
+      expect(coreDescs[customIndex]).toBe(customDesc);
+  });
+
   // Add more tests for other transitions (Part 2 -> 3, 3 -> 4, etc.)
   // Add tests for card movement logic (moveCard)
   // Add tests for final statement input
@@ -325,7 +500,8 @@ describe('UndoManager', () => {
         { id: 2, name: 'TEST2', column: 'unassigned', order: 1 },
       ],
       finalStatements: {},
-      valueSet: 'limited'
+      valueSet: 'limited',
+      editingDescriptionCardId: null // Add missing property
     };
     um = new UndoManager(initialState);
   });
