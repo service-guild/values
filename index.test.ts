@@ -2,11 +2,16 @@ import { App } from "./index";
 import { UndoManager } from "./undoManager";
 import type { AppState, ValueCard } from "./index";
 import { describe, test, expect, beforeEach } from "bun:test";
+import { ALL_VALUE_DEFINITIONS, LIMITED_VALUE_DEFINITIONS, VALUES } from "./values"; // Import value counts for tests
+const ALL_VALUES_COUNT = VALUES.length;
+const LIMITED_VALUES_COUNT = 8;
 
 // Mock necessary DOM elements and event listeners
 beforeEach(() => {
   // Mock window.alert to prevent blocking tests
   window.alert = () => {}; // Replace alert with a non-blocking empty function
+  // Mock window.confirm to default to true (yes) for tests, unless overridden
+  window.confirm = () => true; 
 
   // The happy-dom environment should provide localStorage automatically.
   // We still need to clear it before each test if the environment doesn't do it automatically.
@@ -218,6 +223,89 @@ describe('Values Exercise App', () => {
     expect(part4State.cards.filter(c => c.column === 'additional').length).toBe(1);
   });
 
+  // --- Tests for Value Set Toggling ---
+  test('Initial state uses limited value set', () => {
+      const state = app.undoManager.getState();
+      expect(state.valueSet).toBe('limited');
+      expect(state.cards.length).toBe(LIMITED_VALUES_COUNT);
+  });
+
+  test('Clicking "Use All Values" switches set and resets state', () => {
+      // Arrange: Start in default limited state
+      let initialState = app.undoManager.getState();
+      expect(initialState.valueSet).toBe('limited');
+      // Optional: Advance state to ensure reset happens
+      initialState.currentPart = 'part2';
+      initialState.finalStatements = { 1: 'test' }; 
+      app.updateState(initialState);
+
+      // Act: Call the method directly instead of simulating click
+      app.toggleValueSet();
+
+      // Assert
+      const newState = app.undoManager.getState();
+      expect(newState.valueSet).toBe('all');
+      expect(newState.cards.length).toBe(ALL_VALUES_COUNT);
+      expect(newState.currentPart).toBe('part1'); // Should reset to part1
+      expect(Object.keys(newState.finalStatements).length).toBe(0); // Statements cleared
+  });
+
+  test('Clicking "Use 8 Values" switches set back and resets state', () => {
+      // Arrange: Start, switch to All using direct call
+      // const buttonAll = document.getElementById('useAllValuesBtn');
+      // buttonAll?.click(); // Replace click simulation
+      app.toggleValueSet(); // Call directly to set state to 'all' for setup
+
+      let allState = app.undoManager.getState();
+      expect(allState.valueSet).toBe('all'); // Verify setup worked
+      // Optional: Advance state to ensure reset happens
+      allState.currentPart = 'part3';
+      app.updateState(allState);
+
+      // Act: Call the method directly instead of simulating click
+      app.toggleValueSet();
+
+      // Assert
+      const newState = app.undoManager.getState();
+      expect(newState.valueSet).toBe('limited');
+      expect(newState.cards.length).toBe(LIMITED_VALUES_COUNT);
+      expect(newState.currentPart).toBe('part1');
+      expect(Object.keys(newState.finalStatements).length).toBe(0);
+  });
+
+    test('Clicking the active value set button does nothing', () => {
+      const initialState = app.undoManager.getState();
+      expect(initialState.valueSet).toBe('limited');
+
+      // Act: Click the already active limited button
+      const buttonLimited = document.getElementById('useLimitedValuesBtn');
+      buttonLimited?.click();
+
+      // Assert: State should not have changed
+      const stateAfterClick = app.undoManager.getState();
+      expect(stateAfterClick).toEqual(initialState);
+  });
+
+    test('Switching value set does NOT happen if confirm returns false', () => {
+      const initialState = app.undoManager.getState();
+      expect(initialState.valueSet).toBe('limited');
+
+      // Arrange: Mock confirm to return false for this test
+      const originalConfirm = window.confirm;
+      window.confirm = () => false;
+
+      // Act: Click the button to switch to all values
+      const buttonAll = document.getElementById('useAllValuesBtn');
+      buttonAll?.click();
+
+      // Assert: State should not have changed
+      const stateAfterClick = app.undoManager.getState();
+      expect(stateAfterClick).toEqual(initialState);
+
+      // Cleanup: Restore original confirm
+      window.confirm = originalConfirm;
+  });
+
   // Add more tests for other transitions (Part 2 -> 3, 3 -> 4, etc.)
   // Add tests for card movement logic (moveCard)
   // Add tests for final statement input
@@ -237,6 +325,7 @@ describe('UndoManager', () => {
         { id: 2, name: 'TEST2', column: 'unassigned', order: 1 },
       ],
       finalStatements: {},
+      valueSet: 'limited'
     };
     um = new UndoManager(initialState);
   });

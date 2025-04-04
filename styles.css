@@ -55,6 +55,26 @@ body {
     margin: 0.5em 0;
     border-radius: 4px;
     cursor: grab;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+  
+  .card-name {
+    font-weight: bold;
+    margin-bottom: 4px;
+    display: block;
+  }
+  
+  .card-description {
+    font-size: 0.85em;
+    color: #555;
+    display: block;
+    padding-left: 4px;
+    padding-right: 4px;
   }
   
   .values-grid {

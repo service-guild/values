@@ -13,13 +13,29 @@ export interface AppState {
   cards: ValueCard[];
   // In part 4, user can add final statements for each core value (by card id)
   finalStatements: { [cardId: number]: string };
+  valueSet: 'limited' | 'all'; // Add state for current value set
 }
 
 // Import the UndoManager from its own file
 import { UndoManager } from './undoManager';
-// Import the default values from its own file
-import { DEFAULT_VALUES } from './values';
+// Import the original VALUES array
+import { VALUES } from './values'; 
 import { debounce } from 'lodash'; // Import debounce from lodash
+
+// Define the structure based on the imported VALUES
+interface ValueDefinition {
+    name: string;
+    description: string;
+}
+
+// Recreate ALL_VALUES and LIMITED_VALUES based on the import
+const ALL_VALUE_DEFINITIONS: ValueDefinition[] = VALUES;
+const LIMITED_VALUE_DEFINITIONS = ALL_VALUE_DEFINITIONS.slice(0, 8);
+
+// Create a global map for easy description lookup
+const valueDefinitionsMap = new Map<string, string>(
+    ALL_VALUE_DEFINITIONS.map((def: ValueDefinition) => [def.name, def.description])
+);
 
 // Main application class
 export class App {
@@ -32,15 +48,21 @@ export class App {
   constructor() {
     // Load state from localStorage or initialize default state.
     const saved = localStorage.getItem(this.storageKey);
+    let initialState: AppState;
     if (saved) {
       try {
-        this.state = JSON.parse(saved) as AppState;
+        initialState = JSON.parse(saved) as AppState;
+        // Ensure valueSet exists in saved state, default if not
+        if (!initialState.valueSet) {
+            initialState.valueSet = 'limited'; 
+        }
       } catch {
-        this.state = this.defaultState();
+        initialState = this.defaultState('limited'); // Default to limited on error
       }
     } else {
-      this.state = this.defaultState();
+      initialState = this.defaultState('limited'); // Default to limited initially
     }
+    this.state = initialState; // Set initial state before UndoManager
     this.undoManager = new UndoManager<AppState>(this.state);
 
     // Re-add initialization using lodash debounce
@@ -55,11 +77,12 @@ export class App {
     this.updateUndoRedoButtons();
   }
 
-  // Default state with some sample value cards.
-  public defaultState(): AppState {
-    const sampleCards: ValueCard[] = DEFAULT_VALUES.map((name, index) => ({
+  // Default state with sample value cards based on the selected set
+  public defaultState(valueSet: 'limited' | 'all' = 'limited'): AppState {
+    const definitionsToUse = valueSet === 'all' ? ALL_VALUE_DEFINITIONS : LIMITED_VALUE_DEFINITIONS;
+    const sampleCards: ValueCard[] = definitionsToUse.map((definition: ValueDefinition, index: number) => ({
       id: index + 1,
-      name,
+      name: definition.name, // Use name from definition
       column: "unassigned",
       order: index,
     }));
@@ -67,6 +90,7 @@ export class App {
       currentPart: "part1",
       cards: sampleCards,
       finalStatements: {},
+      valueSet: valueSet, // Store the set used
     };
   }
 
@@ -84,8 +108,20 @@ export class App {
     this.updateUndoRedoButtons();
   }
 
+  // Method to toggle between limited and all values
+  public toggleValueSet() {
+    const currentState = this.undoManager.getState();
+    const nextSet = currentState.valueSet === 'limited' ? 'all' : 'limited';
+    // Generate a fresh default state for the *new* set, resetting progress
+    const newState = this.defaultState(nextSet);
+    // Execute this change through the undo manager
+    this.updateState(newState);
+  }
+
   // Bind event listeners for UI interactions.
   private bindEventListeners() {
+    const appInstance = this; // Capture the App instance
+
     // Navigation buttons
     document.getElementById("toPart2")?.addEventListener("click", () => {
       const newState = this.undoManager.getState();
@@ -173,6 +209,26 @@ export class App {
       this.updateState(newState); // Call updateState directly
     });
 
+    // --- Add listeners for the toggle buttons ---
+    document.getElementById("useLimitedValuesBtn")?.addEventListener("click", () => {
+        // Use captured instance
+        const currentSet = appInstance.undoManager.getState().valueSet;
+        if (currentSet !== 'limited') {
+            if (confirm("Switching value sets will reset your current progress. Are you sure?")) {
+                appInstance.toggleValueSet(); // Use captured instance
+            }
+        }
+    });
+    document.getElementById("useAllValuesBtn")?.addEventListener("click", () => {
+        // Use captured instance
+        const currentSet = appInstance.undoManager.getState().valueSet;
+        if (currentSet !== 'all') {
+            if (confirm("Switching value sets will reset your current progress. Are you sure?")) {
+                appInstance.toggleValueSet(); // Use captured instance
+            }
+        }
+    });
+
     // Undo/Redo buttons
     document.getElementById("undoBtn")?.addEventListener("click", () => {
       const prev = this.undoManager.undo();
@@ -244,13 +300,26 @@ export class App {
     }
   }
 
-  // Creates a draggable card element.
+  // Creates a draggable card element, now including the description.
   private createCardElement(card: ValueCard): HTMLElement {
     const cardElem = document.createElement("div");
     cardElem.className = "card";
     cardElem.draggable = true;
-    cardElem.textContent = card.name;
     cardElem.dataset.cardId = card.id.toString();
+
+    // Create elements for name and description
+    const nameElem = document.createElement("span");
+    nameElem.className = "card-name";
+    nameElem.textContent = card.name;
+
+    const descriptionElem = document.createElement("span");
+    descriptionElem.className = "card-description";
+    // Look up description from the map
+    descriptionElem.textContent = valueDefinitionsMap.get(card.name) || ""; 
+
+    cardElem.appendChild(nameElem);
+    cardElem.appendChild(descriptionElem);
+
     cardElem.addEventListener("dragstart", (e) => {
       e.dataTransfer?.setData("text/plain", card.id.toString());
     });
@@ -454,6 +523,18 @@ export class App {
         });
         reviewContent.appendChild(list);
       }
+    }
+
+    // -- Update toggle button appearance based on current state --
+    const limitedBtn = document.getElementById("useLimitedValuesBtn") as HTMLButtonElement | null;
+    const allBtn = document.getElementById("useAllValuesBtn") as HTMLButtonElement | null;
+    if (limitedBtn) {
+        limitedBtn.classList.toggle('active', this.state.valueSet === 'limited');
+        limitedBtn.disabled = this.state.valueSet === 'limited'; // Disable active button
+    }
+    if (allBtn) {
+        allBtn.classList.toggle('active', this.state.valueSet === 'all');
+        allBtn.disabled = this.state.valueSet === 'all'; // Disable active button
     }
   }
 

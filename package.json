@@ -18,6 +18,7 @@
   "scripts": {
     "dev": "parcel ./index.html",
     "build": "parcel build ./index.html",
-    "test": "bun test"
+    "test": "bun test",
+    "deploy": "bun run build && bunx wrangler pages deploy dist"
   }
 }
