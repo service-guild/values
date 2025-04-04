@@ -2,6 +2,16 @@
   "name": "values",
   "type": "module",
   "private": true,
+  "scripts": {
+    "dev": "parcel ./index.html",
+    "build": "parcel build ./index.html",
+    "test": "bun test",
+    "deploy": "bun test && bun run build && bunx wrangler pages deploy dist",
+    "format": "bunx prettier --write .",
+    "lint": "bunx eslint .",
+    "lint:fix": "bunx eslint --fix .",
+    "prepare": "husky"
+  },
   "devDependencies": {
     "@happy-dom/global-registrator": "^17.4.4",
     "@types/bun": "^1.2.8",
@@ -23,14 +33,7 @@
     "parcel": "^2.14.4",
     "wrangler": "^4.7.0"
   },
-  "scripts": {
-    "dev": "parcel ./index.html",
-    "build": "parcel build ./index.html",
-    "test": "bun test",
-    "deploy": "bun test && bun run build && bunx wrangler pages deploy dist",
-    "format": "bunx prettier --write .",
-    "lint": "bunx eslint .",
-    "lint:fix": "bunx eslint --fix .",
-    "prepare": "husky"
+  "lint-staged": {
+    "*": "prettier --ignore-unknown --write --ignore-path .prettierignore"
   }
 }
