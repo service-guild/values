@@ -3,7 +3,8 @@
   "type": "module",
   "private": true,
   "devDependencies": {
-    "@types/bun": "latest"
+    "@happy-dom/global-registrator": "^17.4.4",
+    "@types/bun": "^1.2.8"
   },
   "peerDependencies": {
     "typescript": "^5"
@@ -14,6 +15,7 @@
   },
   "scripts": {
     "dev": "parcel ./index.html",
-    "build": "parcel build ./index.html"
+    "build": "parcel build ./index.html",
+    "test": "bun test"
   }
 }

@@ -1,5 +1,5 @@
 // Define interfaces for our value cards and overall app state.
-interface ValueCard {
+export interface ValueCard {
   id: number;
   name: string;
   column: string; // Part1: "unassigned", "notImportant", "important", "veryImportant"
@@ -8,56 +8,107 @@ interface ValueCard {
   order: number;
 }
 
-interface AppState {
+export interface AppState {
   currentPart: "part1" | "part2" | "part3" | "part4" | "review";
   cards: ValueCard[];
   // In part 4, user can add final statements for each core value (by card id)
   finalStatements: { [cardId: number]: string };
 }
 
-// A generic undo manager that stores state snapshots.
-class UndoManager<T> {
-  private undoStack: T[] = [];
-  private redoStack: T[] = [];
-  private currentState: T;
-  constructor(initialState: T) {
-    this.currentState = this.deepCopy(initialState);
-  }
-  private deepCopy(state: T): T {
-    return JSON.parse(JSON.stringify(state));
-  }
-  execute(newState: T) {
-    this.undoStack.push(this.deepCopy(this.currentState));
-    this.currentState = this.deepCopy(newState);
-    this.redoStack = []; // clear redo on new action
-  }
-  undo(): T | null {
-    if (!this.undoStack.length) return null;
-    this.redoStack.push(this.deepCopy(this.currentState));
-    this.currentState = this.undoStack.pop()!;
-    return this.deepCopy(this.currentState);
-  }
-  redo(): T | null {
-    if (!this.redoStack.length) return null;
-    this.undoStack.push(this.deepCopy(this.currentState));
-    this.currentState = this.redoStack.pop()!;
-    return this.deepCopy(this.currentState);
-  }
-  getState(): T {
-    return this.deepCopy(this.currentState);
-  }
-  canUndo(): boolean {
-    return this.undoStack.length > 0;
-  }
-  canRedo(): boolean {
-    return this.redoStack.length > 0;
-  }
-}
+// Import the UndoManager from its own file
+import { UndoManager } from './undoManager';
+
+// Top-level constant for default values
+const DEFAULT_VALUES = [
+  "ACCEPTANCE",
+  "ACCURACY",
+  "ACHIEVEMENT",
+  "ADVENTURE",
+  "ATTRACTIVENESS",
+  "AUTHORITY",
+  "AUTONOMY",
+  "BEAUTY",
+  "CARING",
+  "CHALLENGE",
+  "CHANGE",
+  // "COMFORT",
+  // "COMMITMENT",
+  // "COMPASSION",
+  // "CONTRIBUTION",
+  // "COOPERATION",
+  // "COURTESY",
+  // "CREATIVITY",
+  // "DEPENDABILITY",
+  // "DUTY",
+  // "ECOLOGY",
+  // "EXCITEMENT",
+  // "FAITHFULNESS",
+  // "FAME",
+  // "FAMILY",
+  // "FITNESS",
+  // "FLEXIBILITY",
+  // "FORGIVENESS",
+  // "FRIENDSHIP",
+  // "FUN",
+  // "GENEROSITY",
+  // "GENUINENESS",
+  // "GOD'S WILL",
+  // "GROWTH",
+  // "HEALTH",
+  // "HELPFULNESS",
+  // "HONESTY",
+  // "HOPE",
+  // "HUMILITY",
+  // "HUMOR",
+  // "INDEPENDENCE",
+  // "INDUSTRY",
+  // "INNER PEACE",
+  // "INTIMACY",
+  // "JUSTICE",
+  // "KNOWLEDGE",
+  // "LEISURE",
+  // "LOVED",
+  // "LOVING",
+  // "MASTERY",
+  // "MINDFULNESS",
+  // "MODERATION",
+  // "MONOGAMY",
+  // "NONCONFORMITY",
+  // "NURTURANCE",
+  // "OPENNESS",
+  // "ORDER",
+  // "PASSION",
+  // "PLEASURE",
+  // "POPULARITY",
+  // "POWER",
+  // "PURPOSE",
+  // "RATIONALITY",
+  // "REALISM",
+  // "RESPONSIBILITY",
+  // "RISK",
+  // "ROMANCE",
+  // "SAFETY",
+  // "SELF-ACCEPTANCE",
+  // "SELF-CONTROL",
+  // "SELF-ESTEEM",
+  // "SELF-KNOWLEDGE",
+  // "SERVICE",
+  // "SEXUALITY",
+  // "SIMPLICITY",
+  // "SOLITUDE",
+  // "SPIRITUALITY",
+  // "STABILITY",
+  // "TOLERANCE",
+  // "TRADITION",
+  // "VIRTUE",
+  // "WEALTH",
+  // "WORLD PEACE",
+];
 
 // Main application class
-class App {
+export class App {
   private state: AppState;
-  private undoManager: UndoManager<AppState>;
+  public undoManager: UndoManager<AppState>;
   private storageKey: string = "valuesExerciseState";
 
   constructor() {
@@ -79,95 +130,8 @@ class App {
   }
 
   // Default state with some sample value cards.
-  // Replace the defaultState() function with the following code:
-
-  private defaultState(): AppState {
-    const values = [
-      "ACCEPTANCE",
-      "ACCURACY",
-      "ACHIEVEMENT",
-      "ADVENTURE",
-      "ATTRACTIVENESS",
-      "AUTHORITY",
-      "AUTONOMY",
-      "BEAUTY",
-      "CARING",
-      "CHALLENGE",
-      "CHANGE",
-      // "COMFORT",
-      // "COMMITMENT",
-      // "COMPASSION",
-      // "CONTRIBUTION",
-      // "COOPERATION",
-      // "COURTESY",
-      // "CREATIVITY",
-      // "DEPENDABILITY",
-      // "DUTY",
-      // "ECOLOGY",
-      // "EXCITEMENT",
-      // "FAITHFULNESS",
-      // "FAME",
-      // "FAMILY",
-      // "FITNESS",
-      // "FLEXIBILITY",
-      // "FORGIVENESS",
-      // "FRIENDSHIP",
-      // "FUN",
-      // "GENEROSITY",
-      // "GENUINENESS",
-      // "GOD'S WILL",
-      // "GROWTH",
-      // "HEALTH",
-      // "HELPFULNESS",
-      // "HONESTY",
-      // "HOPE",
-      // "HUMILITY",
-      // "HUMOR",
-      // "INDEPENDENCE",
-      // "INDUSTRY",
-      // "INNER PEACE",
-      // "INTIMACY",
-      // "JUSTICE",
-      // "KNOWLEDGE",
-      // "LEISURE",
-      // "LOVED",
-      // "LOVING",
-      // "MASTERY",
-      // "MINDFULNESS",
-      // "MODERATION",
-      // "MONOGAMY",
-      // "NONCONFORMITY",
-      // "NURTURANCE",
-      // "OPENNESS",
-      // "ORDER",
-      // "PASSION",
-      // "PLEASURE",
-      // "POPULARITY",
-      // "POWER",
-      // "PURPOSE",
-      // "RATIONALITY",
-      // "REALISM",
-      // "RESPONSIBILITY",
-      // "RISK",
-      // "ROMANCE",
-      // "SAFETY",
-      // "SELF-ACCEPTANCE",
-      // "SELF-CONTROL",
-      // "SELF-ESTEEM",
-      // "SELF-KNOWLEDGE",
-      // "SERVICE",
-      // "SEXUALITY",
-      // "SIMPLICITY",
-      // "SOLITUDE",
-      // "SPIRITUALITY",
-      // "STABILITY",
-      // "TOLERANCE",
-      // "TRADITION",
-      // "VIRTUE",
-      // "WEALTH",
-      // "WORLD PEACE",
-    ];
-    const sampleCards: ValueCard[] = values.map((name, index) => ({
+  public defaultState(): AppState {
+    const sampleCards: ValueCard[] = DEFAULT_VALUES.map((name, index) => ({
       id: index + 1,
       name,
       column: "unassigned",
@@ -186,7 +150,7 @@ class App {
   }
 
   // Update state via the undoManager then re-render.
-  private updateState(newState: AppState) {
+  public updateState(newState: AppState) {
     this.undoManager.execute(newState);
     this.state = this.undoManager.getState();
     this.saveState();
@@ -200,89 +164,76 @@ class App {
     document.getElementById("toPart2")?.addEventListener("click", () => {
       const newState = this.undoManager.getState();
       newState.currentPart = "part2";
-      
-      // Get all cards that were in "veryImportant" from Part 1
-      const veryImportantCards = newState.cards.filter(card => card.column === "veryImportant");
-      
-      // Move these cards to "unassigned" and remove all other cards
-      newState.cards = veryImportantCards.map(card => ({
-        ...card,
-        column: "unassigned"
-      }));
-      
-      // Log the state for debugging
-      console.log("Transitioning to Part 2:", {
-        totalCards: newState.cards.length,
-        cards: newState.cards.map(c => ({ name: c.name, column: c.column }))
-      });
-      
-      this.updateState(newState);
+      // Filter and map cards in one step
+      newState.cards = newState.cards
+        .filter(card => card.column === "veryImportant")
+        .map(card => ({ ...card, column: "unassigned" }));
+      this.updateState(newState); // Call updateState directly
     });
     document.getElementById("backToPart1")?.addEventListener("click", () => {
       const newState = this.undoManager.getState();
       newState.currentPart = "part1";
       // Restore Part1: move cards back to their original positions
+      // This logic seems potentially flawed - if a card started in 'important' but moved to 'unassigned' in part 2,
+      // this moves it to 'veryImportant'. Revisiting Part 1 might require storing original Part 1 state.
+      // For now, keeping the existing logic.
       newState.cards.forEach((c) => {
         if (c.column === "unassigned") {
           c.column = "veryImportant";
         }
       });
-      this.updateState(newState);
+      this.updateState(newState); // Call updateState directly
     });
     document.getElementById("toPart3")?.addEventListener("click", () => {
       const newState = this.undoManager.getState();
-      const veryImportantCount = newState.cards.filter((c) => c.column === "veryImportant").length;
+      const veryImportantCards = newState.cards.filter((c) => c.column === "veryImportant");
+      const veryImportantCount = veryImportantCards.length;
+
       if (veryImportantCount <= 5) {
-        // If 5 or fewer values in "Very important to me", skip to Part 4
         newState.currentPart = "part4";
-        // Move all "veryImportant" cards to "core"
-        newState.cards = newState.cards
-          .filter((c) => c.column === "veryImportant")
-          .map((c, idx) => ({ ...c, column: "core", order: idx }));
       } else {
-        // Otherwise, proceed to Part 3
         newState.currentPart = "part3";
-        // Move all "veryImportant" cards to "core"
-        newState.cards = newState.cards
-          .filter((c) => c.column === "veryImportant")
-          .map((c, idx) => ({ ...c, column: "core", order: idx }));
       }
-      this.updateState(newState);
+      // Move all "veryImportant" cards to "core" regardless of the next part
+      newState.cards = veryImportantCards.map((c, idx) => ({ ...c, column: "core", order: idx }));
+
+      this.updateState(newState); // Call updateState directly
     });
     document.getElementById("backToPart2")?.addEventListener("click", () => {
       const newState = this.undoManager.getState();
       newState.currentPart = "part2";
       // Restore Part2: move cards back to their original positions
       newState.cards.forEach((c) => {
+        // This assumes cards in Part 3 only came from 'veryImportant' in Part 2
         if (c.column === "core" || c.column === "additional") {
           c.column = "veryImportant";
         }
       });
-      this.updateState(newState);
+      this.updateState(newState); // Call updateState directly
     });
     document.getElementById("toPart4")?.addEventListener("click", () => {
       const newState = this.undoManager.getState();
       const coreCount = newState.cards.filter((c) => c.column === "core").length;
       if (coreCount > 5) {
         alert("You can only have 5 core values! Please move some values to 'Also Something I Want' before continuing.");
-        return;
+        return; // Don't update state if validation fails
       }
       newState.currentPart = "part4";
-      this.updateState(newState);
+      this.updateState(newState); // Call updateState directly
     });
     document.getElementById("backToPart3")?.addEventListener("click", () => {
       const newState = this.undoManager.getState();
       newState.currentPart = "part3";
-      this.updateState(newState);
+      this.updateState(newState); // Call updateState directly
     });
     document.getElementById("finish")?.addEventListener("click", () => {
       const newState = this.undoManager.getState();
       newState.currentPart = "review";
-      this.updateState(newState);
+      this.updateState(newState); // Call updateState directly
     });
     document.getElementById("restart")?.addEventListener("click", () => {
       const newState = this.defaultState();
-      this.updateState(newState);
+      this.updateState(newState); // Call updateState directly
     });
 
     // Undo/Redo buttons
@@ -339,8 +290,8 @@ class App {
     const newState = this.undoManager.getState();
     const card = newState.cards.find((c) => c.id === cardId);
     if (card) {
-      // If in Part2 and moving to core, enforce a maximum of 5 core cards.
-      if (newState.currentPart === "part2" && newColumn === "core") {
+      // If in Part3 and moving to the 'core' column, enforce a maximum of 5 core cards.
+      if (newState.currentPart === "part3" && newColumn === "core") {
         const coreCount = newState.cards.filter(
           (c) => c.column === "core"
         ).length;
@@ -354,6 +305,19 @@ class App {
       card.order = Date.now();
       this.updateState(newState);
     }
+  }
+
+  // Creates a draggable card element.
+  private createCardElement(card: ValueCard): HTMLElement {
+    const cardElem = document.createElement("div");
+    cardElem.className = "card";
+    cardElem.draggable = true;
+    cardElem.textContent = card.name;
+    cardElem.dataset.cardId = card.id.toString();
+    cardElem.addEventListener("dragstart", (e) => {
+      e.dataTransfer?.setData("text/plain", card.id.toString());
+    });
+    return cardElem;
   }
 
   // Render the UI based on the current state.
@@ -384,14 +348,7 @@ class App {
         const containerId = "part1-" + card.column + "Container"; // Use Part 1 prefix
         const container = document.getElementById(containerId);
         if (container) {
-          const cardElem = document.createElement("div");
-          cardElem.className = "card";
-          cardElem.draggable = true;
-          cardElem.textContent = card.name;
-          cardElem.dataset.cardId = card.id.toString();
-          cardElem.addEventListener("dragstart", (e) => {
-            e.dataTransfer?.setData("text/plain", card.id.toString());
-          });
+          const cardElem = this.createCardElement(card); // Use helper
           container.appendChild(cardElem);
         }
       });
@@ -418,14 +375,7 @@ class App {
         const containerId = "part2-" + card.column + "Container"; // Use Part 2 prefix
         const container = document.getElementById(containerId);
         if (container) {
-          const cardElem = document.createElement("div");
-          cardElem.className = "card";
-          cardElem.draggable = true;
-          cardElem.textContent = card.name;
-          cardElem.dataset.cardId = card.id.toString();
-          cardElem.addEventListener("dragstart", (e) => {
-            e.dataTransfer?.setData("text/plain", card.id.toString());
-          });
+          const cardElem = this.createCardElement(card); // Use helper
           container.appendChild(cardElem);
         } else {
           // Log error if container not found (can be removed later)
@@ -443,14 +393,7 @@ class App {
           const containerId = card.column + "Container";
           const container = document.getElementById(containerId);
           if (container) {
-            const cardElem = document.createElement("div");
-            cardElem.className = "card";
-            cardElem.draggable = true;
-            cardElem.textContent = card.name;
-            cardElem.dataset.cardId = card.id.toString();
-            cardElem.addEventListener("dragstart", (e) => {
-              e.dataTransfer?.setData("text/plain", card.id.toString());
-            });
+            const cardElem = this.createCardElement(card); // Use helper
             container.appendChild(cardElem);
           }
         }
@@ -469,9 +412,11 @@ class App {
           const wrapper = document.createElement("div");
           wrapper.className = "final-statement";
           const label = document.createElement("label");
-          label.textContent = `I want ${card.name}: `;
+          label.htmlFor = `statement-${card.id}`;
+          label.textContent = `Describe what "${card.name}" means to you:`;
           const input = document.createElement("input");
           input.type = "text";
+          input.id = `statement-${card.id}`;
           input.value = this.state.finalStatements[card.id] || "";
           input.tabIndex = index + 1; // Set explicit tabindex for inputs (1 to N)
           input.addEventListener("change", () => {
@@ -540,8 +485,8 @@ class App {
         const coreCards = this.state.cards.filter((c) => c.column === "core");
         coreCards.forEach((card) => {
           const li = document.createElement("li");
-          const statement = this.state.finalStatements[card.id] || "";
-          li.textContent = `${card.name}: ${statement}`;
+          const statement = this.state.finalStatements[card.id] || "(No statement written)";
+          li.textContent = `${statement} (${card.name})`;
           list.appendChild(li);
         });
         reviewContent.appendChild(list);
@@ -558,93 +503,8 @@ class App {
   }
 }
 
-// ----------------------
-// Minimal Test Suite (TDD style)
-// ----------------------
-function runTests() {
-  let testCount = 0;
-  let passedCount = 0;
-  function assert(condition: boolean, message: string) {
-    testCount++;
-    if (!condition) {
-      console.error("Test failed:", message);
-    } else {
-      passedCount++;
-    }
-  }
-
-  // Test Part 1 to Part 2 transition
-  const app = new App();
-  const initialState = app.undoManager.getState();
-  
-  // Test initial state
-  assert(initialState.currentPart === "part1", "Initial part should be part1");
-  assert(initialState.cards.length > 0, "Should have cards in initial state");
-  assert(initialState.cards.every(c => c.column === "unassigned"), "All cards should start in unassigned");
-
-  // Test moving cards in Part 1
-  const part1State = app.undoManager.getState();
-  part1State.cards[0].column = "veryImportant";
-  app.updateState(part1State);
-  
-  // Test transition to Part 2
-  const toPart2State = app.undoManager.getState();
-  toPart2State.currentPart = "part2";
-  const veryImportantCards = toPart2State.cards.filter(card => card.column === "veryImportant");
-  toPart2State.cards = veryImportantCards.map(card => ({
-    ...card,
-    column: "unassigned"
-  }));
-  app.updateState(toPart2State);
-  
-  const part2State = app.undoManager.getState();
-  assert(part2State.currentPart === "part2", "Should be in part2 after transition");
-  assert(part2State.cards.length > 0, "Should have cards in part2");
-  assert(part2State.cards.every(c => c.column === "unassigned"), "All cards should be in unassigned in part2");
-
-  // Test UndoManager
-  const um = new UndoManager(initialState);
-  let state = um.getState();
-  assert(state.value === 1, "Initial state should be 1");
-
-  // Execute a change.
-  um.execute({ value: 2 });
-  state = um.getState();
-  assert(state.value === 2, "State should update to 2");
-
-  // Undo should bring back 1.
-  const undone = um.undo();
-  assert(
-    undone !== null && undone.value === 1,
-    "Undo should revert to state 1"
-  );
-
-  // Redo should bring state to 2.
-  const redone = um.redo();
-  assert(
-    redone !== null && redone.value === 2,
-    "Redo should set state back to 2"
-  );
-
-  // Test endless undo/redo by executing multiple changes.
-  um.execute({ value: 3 });
-  um.execute({ value: 4 });
-  assert(um.getState().value === 4, "State should now be 4");
-  um.undo();
-  assert(um.getState().value === 3, "Undo should revert to 3");
-  um.undo();
-  assert(um.getState().value === 2, "Undo should revert to 2");
-  um.redo();
-  assert(um.getState().value === 3, "Redo should bring state to 3");
-
-  console.log(`Tests passed: ${passedCount}/${testCount}`);
-}
-
-// Run tests if URL contains ?test=1
-if (window.location.search.includes("test=1")) {
-  runTests();
-} else {
-  // Initialize the app normally.
+// Initialize the app normally, only if in a browser environment
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   window.addEventListener("DOMContentLoaded", () => {
     new App();
   });
