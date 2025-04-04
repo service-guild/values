@@ -122,6 +122,102 @@ describe('Values Exercise App', () => {
     expect(cardNames).not.toContain(card1.name);
   });
 
+  test('Part 1 to Part 2 transition BLOCKS if unassigned cards exist', () => {
+    // Arrange: Leave some cards unassigned (initial state)
+    const initialStateCards = app.undoManager.getState().cards;
+    // Ensure there is at least one unassigned card
+    expect(initialStateCards.some(c => c.column === 'unassigned')).toBe(true);
+
+    // Act: Simulate clicking the button
+    const button = document.getElementById('toPart2');
+    button?.click();
+
+    // Assert: Check that the state did NOT change
+    const stateAfterClick = app.undoManager.getState();
+    expect(stateAfterClick.currentPart).toBe('part1'); // Should still be in part1
+    expect(stateAfterClick.cards).toEqual(initialStateCards); // Cards state should be unchanged
+    // We could also spy on window.alert if needed
+  });
+
+  test('Part 2 to Part 4 transition SKIPS Part 3 if <= 5 veryImportant cards', () => {
+    // Arrange: Setup state in Part 2 with 4 'veryImportant' cards
+    let state = app.undoManager.getState();
+    state.currentPart = 'part2'; // Manually set part for setup
+    state.cards = [
+      { id: 1, name: 'V1', column: 'veryImportant', order: 0 },
+      { id: 2, name: 'V2', column: 'veryImportant', order: 1 },
+      { id: 3, name: 'V3', column: 'veryImportant', order: 2 },
+      { id: 4, name: 'V4', column: 'veryImportant', order: 3 },
+      { id: 5, name: 'I1', column: 'important', order: 4 }, // Need some non-veryImportant too
+    ];
+    app.updateState(state); 
+    // Note: Need to re-bind listeners if updateState doesn't do it, 
+    // but our simple listener binding in constructor might suffice if DOM isn't fully replaced.
+    // For robustness, re-creating App instance or re-binding might be better in complex scenarios.
+    app = new App(); // Re-create to ensure listeners are bound to correct state/DOM
+    
+    // Act: Click the 'Next' button (toPart3)
+    const button = document.getElementById('toPart3');
+    button?.click();
+
+    // Assert: Should be in Part 4, and cards should be 'core'
+    const part4State = app.undoManager.getState();
+    expect(part4State.currentPart).toBe('part4'); // Should skip to part4
+    expect(part4State.cards.length).toBe(4); // Only the 4 veryImportant cards remain
+    expect(part4State.cards.every(c => c.column === 'core')).toBe(true);
+  });
+
+  test('Part 3 to Part 4 transition BLOCKS if > 5 core cards', () => {
+    // Arrange: Setup state in Part 3 with 6 'core' cards
+    let state = app.undoManager.getState();
+    state.currentPart = 'part3';
+    state.cards = [
+      { id: 1, name: 'C1', column: 'core', order: 0 },
+      { id: 2, name: 'C2', column: 'core', order: 1 },
+      { id: 3, name: 'C3', column: 'core', order: 2 },
+      { id: 4, name: 'C4', column: 'core', order: 3 },
+      { id: 5, name: 'C5', column: 'core', order: 4 },
+      { id: 6, name: 'C6', column: 'core', order: 5 },
+    ];
+    app.updateState(state);
+    app = new App(); // Re-create for listeners
+
+    // Act: Click the 'Next' button (toPart4)
+    const button = document.getElementById('toPart4');
+    button?.click();
+
+    // Assert: Should still be in Part 3
+    const stateAfterClick = app.undoManager.getState();
+    expect(stateAfterClick.currentPart).toBe('part3'); 
+  });
+
+    test('Part 3 to Part 4 transition SUCCEEDS if <= 5 core cards', () => {
+    // Arrange: Setup state in Part 3 with 5 'core' cards
+    let state = app.undoManager.getState();
+    state.currentPart = 'part3';
+    state.cards = [
+      { id: 1, name: 'C1', column: 'core', order: 0 },
+      { id: 2, name: 'C2', column: 'core', order: 1 },
+      { id: 3, name: 'C3', column: 'core', order: 2 },
+      { id: 4, name: 'C4', column: 'core', order: 3 },
+      { id: 5, name: 'C5', column: 'core', order: 4 },
+      { id: 6, name: 'A1', column: 'additional', order: 5 }, // One additional
+    ];
+    app.updateState(state);
+    app = new App(); // Re-create for listeners
+
+    // Act: Click the 'Next' button (toPart4)
+    const button = document.getElementById('toPart4');
+    button?.click();
+
+    // Assert: Should be in Part 4
+    const part4State = app.undoManager.getState();
+    expect(part4State.currentPart).toBe('part4'); 
+    // Cards state should remain the same (core/additional separation is kept)
+    expect(part4State.cards.filter(c => c.column === 'core').length).toBe(5);
+    expect(part4State.cards.filter(c => c.column === 'additional').length).toBe(1);
+  });
+
   // Add more tests for other transitions (Part 2 -> 3, 3 -> 4, etc.)
   // Add tests for card movement logic (moveCard)
   // Add tests for final statement input
