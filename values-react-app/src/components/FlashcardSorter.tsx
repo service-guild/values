@@ -8,12 +8,34 @@ import { ValueCard } from './ValueCard';
 
 // Import type
 
-// Define assignment categories for Part 1/2
+// Reorder categories and define colors/bg for progress bar
 const assignmentCategories = [
-  { id: 'veryImportant', title: 'Very Important', variant: 'primary' as const, swipeDir: 'Down' },
-  { id: 'important', title: 'Important', variant: 'secondary' as const, swipeDir: 'Right' },
-  { id: 'notImportant', title: 'Not Important', variant: 'secondary' as const, swipeDir: 'Left' },
+  {
+    id: 'notImportant',
+    title: 'Not Important',
+    variant: 'secondary' as const,
+    swipeDir: 'Left',
+    color: 'text-red-600',
+    bgColor: 'bg-red-500',
+  },
+  {
+    id: 'important',
+    title: 'Important',
+    variant: 'secondary' as const,
+    swipeDir: 'Right',
+    color: 'text-yellow-600',
+    bgColor: 'bg-yellow-500',
+  },
+  {
+    id: 'veryImportant',
+    title: 'Very Important',
+    variant: 'primary' as const,
+    swipeDir: 'Down',
+    color: 'text-green-600',
+    bgColor: 'bg-green-500',
+  },
 ];
+const remainingCategory = { id: 'unassigned', color: 'text-gray-500', bgColor: 'bg-gray-300' };
 
 // Define minimum swipe distance threshold (pixels)
 const SWIPE_THRESHOLD = 60;
@@ -43,7 +65,16 @@ export function FlashcardSorter() {
     currentCardIdRef.current = nextUnassignedCard.id;
   }
 
+  // Calculate counts
+  const categoryCounts = assignmentCategories.reduce(
+    (acc, category) => {
+      acc[category.id] = cards.filter((card) => card.column === category.id).length;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
   const unassignedCount = cards.filter((card) => card.column === 'unassigned').length;
+  const totalCards = cards.length; // Total cards for percentage calculation
 
   // Reset swipe state visually
   const resetSwipeState = () => {
@@ -151,7 +182,40 @@ export function FlashcardSorter() {
   return (
     // Use height of parent
     <div className="flex flex-col items-center w-full max-w-md mx-auto h-full pt-2 pb-2">
-      <p className="mb-2 text-sm text-gray-500 flex-shrink-0">{unassignedCount} remaining</p>
+      {/* Status Area */}
+      <div className="w-full px-4 mb-2 flex-shrink-0">
+        {/* Text Indicators - Stacked */}
+        <div className="flex justify-between w-full text-xs mb-1">
+          {' '}
+          {/* Smaller text */}
+          <span className={remainingCategory.color}>{unassignedCount} remaining</span>
+          <div className="flex space-x-2">
+            {assignmentCategories.map((cat) => (
+              <span key={cat.id} className={`${cat.color} font-medium`}>
+                {/* Shorten labels? */} {cat.title.split(' ')[0]}: {categoryCounts[cat.id] ?? 0}
+              </span>
+            ))}
+          </div>
+        </div>
+        {/* Progress Bar */}
+        <div className="w-full h-2 bg-gray-200 rounded overflow-hidden flex">
+          {' '}
+          {/* Bar container */}
+          {/* Remaining Segment */}
+          <div
+            className={remainingCategory.bgColor}
+            style={{ width: `${totalCards > 0 ? (unassignedCount / totalCards) * 100 : 0}%` }}
+          ></div>
+          {/* Assigned Segments */}
+          {assignmentCategories.map((cat) => (
+            <div
+              key={cat.id}
+              className={cat.bgColor}
+              style={{ width: `${totalCards > 0 ? ((categoryCounts[cat.id] ?? 0) / totalCards) * 100 : 0}%` }}
+            ></div>
+          ))}
+        </div>
+      </div>
 
       {/* Card area: Allow shrinking if needed, handle internal overflow */}
       <div className="flex-grow w-full flex items-center justify-center p-4 relative overflow-hidden min-h-0 overflow-y-auto">
