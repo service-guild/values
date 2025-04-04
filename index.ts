@@ -17,99 +17,17 @@ export interface AppState {
 
 // Import the UndoManager from its own file
 import { UndoManager } from './undoManager';
-
-// Top-level constant for default values
-const DEFAULT_VALUES = [
-  "ACCEPTANCE",
-  "ACCURACY",
-  "ACHIEVEMENT",
-  "ADVENTURE",
-  "ATTRACTIVENESS",
-  "AUTHORITY",
-  "AUTONOMY",
-  "BEAUTY",
-  "CARING",
-  "CHALLENGE",
-  "CHANGE",
-  // "COMFORT",
-  // "COMMITMENT",
-  // "COMPASSION",
-  // "CONTRIBUTION",
-  // "COOPERATION",
-  // "COURTESY",
-  // "CREATIVITY",
-  // "DEPENDABILITY",
-  // "DUTY",
-  // "ECOLOGY",
-  // "EXCITEMENT",
-  // "FAITHFULNESS",
-  // "FAME",
-  // "FAMILY",
-  // "FITNESS",
-  // "FLEXIBILITY",
-  // "FORGIVENESS",
-  // "FRIENDSHIP",
-  // "FUN",
-  // "GENEROSITY",
-  // "GENUINENESS",
-  // "GOD'S WILL",
-  // "GROWTH",
-  // "HEALTH",
-  // "HELPFULNESS",
-  // "HONESTY",
-  // "HOPE",
-  // "HUMILITY",
-  // "HUMOR",
-  // "INDEPENDENCE",
-  // "INDUSTRY",
-  // "INNER PEACE",
-  // "INTIMACY",
-  // "JUSTICE",
-  // "KNOWLEDGE",
-  // "LEISURE",
-  // "LOVED",
-  // "LOVING",
-  // "MASTERY",
-  // "MINDFULNESS",
-  // "MODERATION",
-  // "MONOGAMY",
-  // "NONCONFORMITY",
-  // "NURTURANCE",
-  // "OPENNESS",
-  // "ORDER",
-  // "PASSION",
-  // "PLEASURE",
-  // "POPULARITY",
-  // "POWER",
-  // "PURPOSE",
-  // "RATIONALITY",
-  // "REALISM",
-  // "RESPONSIBILITY",
-  // "RISK",
-  // "ROMANCE",
-  // "SAFETY",
-  // "SELF-ACCEPTANCE",
-  // "SELF-CONTROL",
-  // "SELF-ESTEEM",
-  // "SELF-KNOWLEDGE",
-  // "SERVICE",
-  // "SEXUALITY",
-  // "SIMPLICITY",
-  // "SOLITUDE",
-  // "SPIRITUALITY",
-  // "STABILITY",
-  // "TOLERANCE",
-  // "TRADITION",
-  // "VIRTUE",
-  // "WEALTH",
-  // "WORLD PEACE",
-];
+// Import the default values from its own file
+import { DEFAULT_VALUES } from './values';
+import { debounce } from 'lodash'; // Import debounce from lodash
 
 // Main application class
 export class App {
   private state: AppState;
   public undoManager: UndoManager<AppState>;
   private storageKey: string = "valuesExerciseState";
+  // Re-add the property to hold the debounced function
+  private debouncedUpdateFinalStatement: (cardId: number, value: string) => void;
 
   constructor() {
     // Load state from localStorage or initialize default state.
@@ -124,6 +42,14 @@ export class App {
       this.state = this.defaultState();
     }
     this.undoManager = new UndoManager<AppState>(this.state);
+
+    // Re-add initialization using lodash debounce
+    this.debouncedUpdateFinalStatement = debounce((cardId: number, value: string) => {
+        const newState = this.undoManager.getState();
+        newState.finalStatements[cardId] = value;
+        this.updateState(newState);
+    }, 500);
+
     this.bindEventListeners();
     this.render();
     this.updateUndoRedoButtons();
@@ -322,6 +248,17 @@ export class App {
 
   // Render the UI based on the current state.
   private render() {
+    // Manage tabindex for global controls based on current part
+    const isPart4Active = this.state.currentPart === "part4";
+    const globalControls = document.querySelectorAll('#global-controls button');
+    globalControls.forEach(btn => {
+        if (isPart4Active) {
+            (btn as HTMLElement).tabIndex = -1; // Make header buttons non-tabbable during Part 4
+        } else {
+            (btn as HTMLElement).removeAttribute('tabindex'); // Restore default tabbability
+        }
+    });
+
     // Hide all parts first.
     document.querySelectorAll(".exercise-part").forEach((section) => {
       (section as HTMLElement).style.display = "none";
@@ -400,41 +337,56 @@ export class App {
       });
     } else if (this.state.currentPart === "part4") {
       // Render text inputs for each core value.
-      const finalStatements = document.getElementById("finalStatements");
-      if (finalStatements) {
-        finalStatements.innerHTML = "";
+      const finalStatementsContainer = document.getElementById("finalStatements");
+      if (finalStatementsContainer) {
         const coreCards = this.state.cards.filter((c) => c.column === "core");
-        
-        // Sort coreCards alphabetically by name for consistent order and tab index
-        coreCards.sort((a, b) => a.name.localeCompare(b.name));
-        
-        coreCards.forEach((card, index) => {
-          const wrapper = document.createElement("div");
-          wrapper.className = "final-statement";
-          const label = document.createElement("label");
-          label.htmlFor = `statement-${card.id}`;
-          label.textContent = `Describe what "${card.name}" means to you:`;
-          const input = document.createElement("input");
-          input.type = "text";
-          input.id = `statement-${card.id}`;
-          input.value = this.state.finalStatements[card.id] || "";
-          input.tabIndex = index + 1; // Set explicit tabindex for inputs (1 to N)
-          input.addEventListener("change", () => {
-            const newState = this.undoManager.getState();
-            newState.finalStatements[card.id] = input.value;
-            this.updateState(newState);
+        coreCards.sort((a, b) => a.name.localeCompare(b.name)); // Keep sorting for consistent order
+
+        // Check if inputs matching core cards already exist
+        const existingInputs = finalStatementsContainer.querySelectorAll<HTMLInputElement>('input[type="text"]');
+        let inputsMatch = existingInputs.length === coreCards.length;
+        if (inputsMatch) {
+            existingInputs.forEach((input, index) => {
+                // Verify the input corresponds to the correct card (using id or other attribute if needed)
+                // For simplicity, we assume order matches due to sorting if length is correct
+                if (coreCards[index]?.id.toString() !== input.id.replace('statement-', '')) {
+                    inputsMatch = false;
+                }
+            });
+        }
+
+        if (inputsMatch) {
+          // Inputs exist and match: Just update their values
+          existingInputs.forEach((input) => {
+            const cardId = Number(input.id.replace('statement-', ''));
+            const currentValue = this.state.finalStatements[cardId] || "";
+            if (input.value !== currentValue) {
+              input.value = currentValue;
+            }
           });
-          wrapper.appendChild(label);
-          wrapper.appendChild(input);
-          finalStatements.appendChild(wrapper);
-        });
-        
-        // Set tabindex for buttons after the inputs
-        const backBtn = document.getElementById("backToPart3") as HTMLButtonElement | null;
-        const finishBtn = document.getElementById("finish") as HTMLButtonElement | null;
-        const nextTabIndex = coreCards.length + 1;
-        if (finishBtn) finishBtn.tabIndex = nextTabIndex; // Finish button comes next
-        if (backBtn) backBtn.tabIndex = nextTabIndex + 1; // Back button comes after Finish
+        } else {
+          // Inputs don't exist or don't match: Clear and recreate them
+          finalStatementsContainer.innerHTML = ""; 
+          coreCards.forEach((card, index) => {
+            const wrapper = document.createElement("div");
+            wrapper.className = "final-statement";
+            const label = document.createElement("label");
+            label.htmlFor = `statement-${card.id}`;
+            label.textContent = `Describe what "${card.name}" means to you:`;
+            const input = document.createElement("input");
+            input.type = "text";
+            input.id = `statement-${card.id}`;
+            input.value = this.state.finalStatements[card.id] || "";
+            // Use 'input' event to call the debounced update function
+            input.addEventListener("input", () => {
+              // Call the debounced function, passing necessary info
+              this.debouncedUpdateFinalStatement(card.id, input.value);
+            });
+            wrapper.appendChild(label);
+            wrapper.appendChild(input);
+            finalStatementsContainer.appendChild(wrapper);
+          });
+        }
       }
     } else if (this.state.currentPart === "review") {
       const reviewContent = document.getElementById("reviewContent");
