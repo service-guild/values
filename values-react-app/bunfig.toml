@@ -1,0 +1,3 @@
+[test]
+# Configuration for Bun test runner
+# (DOM environment will be enabled via --dom flag)

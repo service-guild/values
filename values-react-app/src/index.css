@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Ensure root elements take full height for h-full to work */
+html,
+body,
+#root {
+  height: 100%;
+}
