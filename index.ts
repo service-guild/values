@@ -89,8 +89,13 @@ export class App {
     // Navigation buttons
     document.getElementById("toPart2")?.addEventListener("click", () => {
       const newState = this.undoManager.getState();
+      // Check for unassigned cards before proceeding
+      const unassignedCount = newState.cards.filter(card => card.column === 'unassigned').length;
+      if (unassignedCount > 0) {
+        alert(`Please sort all ${unassignedCount} unassigned value(s) before proceeding to Part 2.`);
+        return;
+      }
       newState.currentPart = "part2";
-      // Filter and map cards in one step
       newState.cards = newState.cards
         .filter(card => card.column === "veryImportant")
         .map(card => ({ ...card, column: "unassigned" }));
@@ -112,6 +117,12 @@ export class App {
     });
     document.getElementById("toPart3")?.addEventListener("click", () => {
       const newState = this.undoManager.getState();
+      // Check for unassigned cards before proceeding
+      const unassignedCount = newState.cards.filter(card => card.column === 'unassigned').length;
+      if (unassignedCount > 0) {
+        alert(`Please sort all ${unassignedCount} unassigned value(s) before proceeding.`);
+        return;
+      }
       const veryImportantCards = newState.cards.filter((c) => c.column === "veryImportant");
       const veryImportantCount = veryImportantCards.length;
 

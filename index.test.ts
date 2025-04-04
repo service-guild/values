@@ -5,6 +5,9 @@ import { describe, test, expect, beforeEach } from "bun:test";
 
 // Mock necessary DOM elements and event listeners
 beforeEach(() => {
+  // Mock window.alert to prevent blocking tests
+  window.alert = () => {}; // Replace alert with a non-blocking empty function
+
   // The happy-dom environment should provide localStorage automatically.
   // We still need to clear it before each test if the environment doesn't do it automatically.
   if (typeof window !== 'undefined' && window.localStorage) {
@@ -74,9 +77,18 @@ describe('Values Exercise App', () => {
     if (state.cards.length < 3) {
         throw new Error("Test setup failed: Initial state should have at least 3 cards for this test.");
     }
-    state.cards[0].column = 'veryImportant';
-    state.cards[1].column = 'important';
-    state.cards[2].column = 'veryImportant';
+    // Assign ALL cards to avoid blocking the transition due to the unassigned check
+    state.cards.forEach((card, index) => {
+        if (index === 0) {
+            card.column = 'veryImportant';
+        } else if (index === 1) {
+            card.column = 'important';
+        } else if (index === 2) {
+            card.column = 'veryImportant';
+        } else {
+            card.column = 'notImportant'; // Assign all others
+        }
+    });
     app.updateState(state);
 
     // Act: Simulate clicking the button
