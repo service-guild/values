@@ -20,7 +20,9 @@ export interface AppState {
 import { UndoManager } from './undoManager';
 // Import the original VALUES array
 import { VALUES } from './values'; 
-import { debounce } from 'lodash'; // Import debounce from lodash
+// Import debounce and the necessary type from lodash
+import { debounce } from 'lodash'; 
+import type { DebouncedFunc } from 'lodash'; // Use type-only import
 
 // Define the structure based on the imported VALUES
 interface ValueDefinition {
@@ -30,7 +32,7 @@ interface ValueDefinition {
 
 // Recreate ALL_VALUES and LIMITED_VALUES based on the import
 const ALL_VALUE_DEFINITIONS: ValueDefinition[] = VALUES;
-const LIMITED_VALUE_DEFINITIONS = ALL_VALUE_DEFINITIONS.slice(0, 8);
+const LIMITED_VALUE_DEFINITIONS = ALL_VALUE_DEFINITIONS.slice(0, 10);
 
 // Create a global map for easy description lookup
 const valueDefinitionsMap = new Map<string, string>(
@@ -42,8 +44,8 @@ export class App {
   private state: AppState;
   public undoManager: UndoManager<AppState>;
   private storageKey: string = "valuesExerciseState";
-  // Re-add the property to hold the debounced function
-  private debouncedUpdateFinalStatement: (cardId: number, value: string) => void;
+  // Update type annotation to use DebouncedFunc
+  private debouncedUpdateFinalStatement: DebouncedFunc<(cardId: number, value: string) => void>;
 
   constructor() {
     // Load state from localStorage or initialize default state.
@@ -137,16 +139,6 @@ export class App {
         .map(card => ({ ...card, column: "unassigned" }));
       this.updateState(newState); // Call updateState directly
     });
-    document.getElementById("backToPart1")?.addEventListener("click", () => {
-      // Simply undo the last state change
-      const prevState = this.undoManager.undo();
-      if (prevState) {
-        this.state = prevState;
-        this.saveState();
-        this.render();
-        this.updateUndoRedoButtons();
-      }
-    });
     document.getElementById("toPart3")?.addEventListener("click", () => {
       const newState = this.undoManager.getState();
       // Check for unassigned cards before proceeding
@@ -168,16 +160,6 @@ export class App {
 
       this.updateState(newState); // Call updateState directly
     });
-    document.getElementById("backToPart2")?.addEventListener("click", () => {
-      // Simply undo the last state change
-      const prevState = this.undoManager.undo();
-      if (prevState) {
-        this.state = prevState;
-        this.saveState();
-        this.render();
-        this.updateUndoRedoButtons();
-      }
-    });
     document.getElementById("toPart4")?.addEventListener("click", () => {
       const newState = this.undoManager.getState();
       const coreCount = newState.cards.filter((c) => c.column === "core").length;
@@ -188,17 +170,10 @@ export class App {
       newState.currentPart = "part4";
       this.updateState(newState); // Call updateState directly
     });
-    document.getElementById("backToPart3")?.addEventListener("click", () => {
-      // Simply undo the last state change
-      const prevState = this.undoManager.undo();
-      if (prevState) {
-        this.state = prevState;
-        this.saveState();
-        this.render();
-        this.updateUndoRedoButtons();
-      }
-    });
     document.getElementById("finish")?.addEventListener("click", () => {
+      // Flush any pending debounced updates immediately
+      this.debouncedUpdateFinalStatement.flush();
+
       const newState = this.undoManager.getState();
       // Check if all core values have statements
       const coreCards = newState.cards.filter(c => c.column === 'core');
@@ -258,11 +233,13 @@ export class App {
       }
     });
 
-    // Clear storage button
+    // Clear storage button (renamed to Restart exercise)
     document.getElementById("clearStorageBtn")?.addEventListener("click", () => {
-      if (confirm("Are you sure you want to clear all saved data? This action cannot be undone.")) {
+      // Update confirmation message
+      if (confirm("Are you sure you want to restart the exercise? All progress will be lost. This action cannot be undone.")) {
         localStorage.removeItem(this.storageKey);
-        const newState = this.defaultState();
+        // Reset to the default state using the *current* value set preference
+        const newState = this.defaultState(this.state.valueSet); 
         this.updateState(newState);
       }
     });

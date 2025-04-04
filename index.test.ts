@@ -4,7 +4,7 @@ import type { AppState, ValueCard } from "./index";
 import { describe, test, expect, beforeEach } from "bun:test";
 import { ALL_VALUE_DEFINITIONS, LIMITED_VALUE_DEFINITIONS, VALUES } from "./values"; // Import value counts for tests
 const ALL_VALUES_COUNT = VALUES.length;
-const LIMITED_VALUES_COUNT = 8;
+const LIMITED_VALUES_COUNT = 10;
 
 // Mock necessary DOM elements and event listeners
 beforeEach(() => {
@@ -250,7 +250,7 @@ describe('Values Exercise App', () => {
       expect(Object.keys(newState.finalStatements).length).toBe(0); // Statements cleared
   });
 
-  test('Clicking "Use 8 Values" switches set back and resets state', () => {
+  test('Clicking "Use 10 Values" switches set back and resets state', () => {
       // Arrange: Start, switch to All using direct call
       // const buttonAll = document.getElementById('useAllValuesBtn');
       // buttonAll?.click(); // Replace click simulation
