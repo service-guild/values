@@ -142,6 +142,7 @@ export class App {
   public undoManager: UndoManager<AppState>;
   private storageKey = 'valuesExerciseState';
   private nextCustomCardId = -1; // Counter for unique negative IDs
+  private selectedCardId: number | null = null; // For mobile tap-to-move
 
   constructor() {
     // Load state from localStorage or initialize default state.
@@ -155,11 +156,11 @@ export class App {
         const minId = Math.min(0, ...initialState.cards.filter((c) => c.isCustom).map((c) => c.id));
         this.nextCustomCardId = minId - 1;
       } catch {
-        initialState = this.defaultState('limited');
+        initialState = this.defaultState('all');
         this.nextCustomCardId = -1; // Reset on error
       }
     } else {
-      initialState = this.defaultState('limited');
+      initialState = this.defaultState('all');
       this.nextCustomCardId = -1; // Reset if no saved state
     }
     this.state = initialState;
@@ -171,7 +172,7 @@ export class App {
   }
 
   // Default state with sample value cards based on the selected set
-  public defaultState(valueSet: 'limited' | 'all' = 'limited'): AppState {
+  public defaultState(valueSet: 'limited' | 'all' = 'all'): AppState {
     const definitionsToUse = valueSet === 'all' ? ALL_VALUE_DEFINITIONS : LIMITED_VALUE_DEFINITIONS;
     const sampleCards: ValueCard[] = definitionsToUse.map((definition: ValueDefinition, index: number) => ({
       id: index + 1,
@@ -421,28 +422,46 @@ export class App {
       this.updateState(newState); // Call updateState directly
     });
 
-    // --- Add listeners for the toggle buttons ---
+    // --- Triple-click on title to toggle testing mode button ---
+    const titleElement = document.querySelector('header h1');
+    let clickCount = 0;
+    let clickTimer: ReturnType<typeof setTimeout> | null = null;
+    titleElement?.addEventListener('click', () => {
+      clickCount++;
+      if (clickTimer) {
+        clearTimeout(clickTimer);
+      }
+      clickTimer = setTimeout(() => {
+        clickCount = 0;
+      }, 500); // Reset after 500ms of no clicks
+
+      if (clickCount >= 3) {
+        clickCount = 0;
+        const limitedBtn = document.getElementById('useLimitedValuesBtn') as HTMLButtonElement | null;
+        if (limitedBtn) {
+          const isHidden = limitedBtn.style.display === 'none';
+          limitedBtn.style.display = isHidden ? 'inline-block' : 'none';
+        }
+      }
+    });
+
+    // --- Listener for the testing mode toggle button ---
     document.getElementById('useLimitedValuesBtn')?.addEventListener('click', async () => {
-      // Use captured instance
       const currentSet = this.undoManager.getState().valueSet;
       if (currentSet !== 'limited') {
         const confirmed = await showConfirm(
-          'Switch Value Set',
-          'Switching value sets will reset your current progress. Are you sure?',
+          'Switch to Testing Mode',
+          'Switching to testing mode (10 values) will reset your current progress. Are you sure?',
           'warning',
         );
         if (confirmed) {
           this.toggleValueSet();
         }
-      }
-    });
-    document.getElementById('useAllValuesBtn')?.addEventListener('click', async () => {
-      // Use captured instance
-      const currentSet = this.undoManager.getState().valueSet;
-      if (currentSet !== 'all') {
+      } else {
+        // Already in limited mode, switch back to all
         const confirmed = await showConfirm(
-          'Switch Value Set',
-          'Switching value sets will reset your current progress. Are you sure?',
+          'Switch to Full Mode',
+          'Switching to full mode (all values) will reset your current progress. Are you sure?',
           'warning',
         );
         if (confirmed) {
@@ -515,6 +534,18 @@ export class App {
         document.querySelectorAll('.card-container.drag-over').forEach((el) => {
           el.classList.remove('drag-over');
         });
+      });
+
+      // Mobile: click on container to move selected card
+      container.addEventListener('click', (e) => {
+        // Only handle if a card is selected and click is directly on container (not on a card)
+        if (this.selectedCardId !== null && e.target === container) {
+          const targetColumn = container.parentElement?.getAttribute('data-column');
+          if (targetColumn) {
+            this.moveCard(this.selectedCardId, targetColumn);
+            this.selectedCardId = null; // Clear selection after move
+          }
+        }
       });
     });
   }
@@ -606,7 +637,42 @@ export class App {
       }
     });
 
+    // Mobile tap-to-select functionality
+    cardElem.addEventListener('click', (e) => {
+      // Don't trigger if clicking on description (for editing)
+      if ((e.target as HTMLElement).classList.contains('card-description')) {
+        return;
+      }
+      // Don't trigger if editing description
+      if (this.state.editingDescriptionCardId !== null) {
+        return;
+      }
+      this.toggleCardSelection(card.id);
+    });
+
+    // Add selected class if this card is selected
+    if (this.selectedCardId === card.id) {
+      cardElem.classList.add('selected');
+    }
+
     return cardElem;
+  }
+
+  // Toggle card selection for mobile
+  private toggleCardSelection(cardId: number) {
+    if (this.selectedCardId === cardId) {
+      // Deselect if already selected
+      this.selectedCardId = null;
+    } else {
+      this.selectedCardId = cardId;
+    }
+    this.render();
+  }
+
+  // Clear card selection
+  private clearSelection() {
+    this.selectedCardId = null;
+    this.render();
   }
 
   // Render the UI based on the current state.
@@ -827,19 +893,30 @@ export class App {
       }
     }
 
+    // Update visual state for mobile selection
+    const allContainers = document.querySelectorAll('.card-container');
+    allContainers.forEach((container) => {
+      if (this.selectedCardId !== null) {
+        container.classList.add('can-receive');
+      } else {
+        container.classList.remove('can-receive');
+      }
+    });
+
     // Update progress stepper
     this.updateProgressStepper();
 
     // -- Update toggle button appearance based on current state --
     const limitedBtn = document.getElementById('useLimitedValuesBtn') as HTMLButtonElement | null;
-    const allBtn = document.getElementById('useAllValuesBtn') as HTMLButtonElement | null;
     if (limitedBtn) {
-      limitedBtn.classList.toggle('active', this.state.valueSet === 'limited');
-      limitedBtn.disabled = this.state.valueSet === 'limited'; // Disable active button
-    }
-    if (allBtn) {
-      allBtn.classList.toggle('active', this.state.valueSet === 'all');
-      allBtn.disabled = this.state.valueSet === 'all'; // Disable active button
+      // Update button text to reflect current mode
+      if (this.state.valueSet === 'limited') {
+        limitedBtn.textContent = 'Use All Values';
+        limitedBtn.classList.add('active');
+      } else {
+        limitedBtn.textContent = 'Use 10 Values';
+        limitedBtn.classList.remove('active');
+      }
     }
   }
 

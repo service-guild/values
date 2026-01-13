@@ -327,8 +327,14 @@ button#restart:hover {
   border-style: solid;
 }
 
+/* Mobile: highlight containers when a card is selected */
+.card-container.can-receive {
+  border-color: var(--color-sage);
+  background: var(--color-sage-subtle);
+}
+
 .card-container:empty::before {
-  content: 'Drag values here';
+  content: 'Drag or tap to move values here';
   display: flex;
   align-items: center;
   justify-content: center;
@@ -336,11 +342,20 @@ button#restart:hover {
   color: var(--color-text-muted);
   font-size: 0.875rem;
   font-style: italic;
+  text-align: center;
+  padding: 0 var(--space-sm);
 }
 
 .card-container.drag-over:empty::before {
   content: 'Drop here!';
   color: var(--color-primary);
+  font-weight: 500;
+  font-style: normal;
+}
+
+.card-container.can-receive:empty::before {
+  content: 'Tap here to move selected value';
+  color: var(--color-sage);
   font-weight: 500;
   font-style: normal;
 }
@@ -382,6 +397,19 @@ button#restart:hover {
 }
 
 .card:hover::before {
+  opacity: 1;
+}
+
+/* Selected card state (for mobile tap-to-move) */
+.card.selected {
+  border-color: var(--color-primary);
+  box-shadow:
+    0 0 0 3px var(--color-primary-subtle),
+    var(--shadow-card-hover);
+  transform: translateY(-2px);
+}
+
+.card.selected::before {
   opacity: 1;
 }
 
@@ -967,4 +995,89 @@ textarea:focus-visible {
   .step-connector {
     flex: 0 0 12px;
   }
+}
+
+/* About Section */
+.about-section {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  margin-top: var(--space-xl);
+  margin-bottom: var(--space-xl);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.about-section h2 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 500;
+  color: var(--color-text);
+  margin: 0 0 var(--space-md) 0;
+  letter-spacing: -0.01em;
+}
+
+.about-section p {
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-md) 0;
+  line-height: 1.7;
+}
+
+.about-section details {
+  margin: var(--space-md) 0;
+  background: var(--color-bg-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.about-section summary {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--color-text);
+  cursor: pointer;
+  padding: var(--space-sm) 0;
+  transition: color var(--transition-fast);
+}
+
+.about-section summary:hover {
+  color: var(--color-primary);
+}
+
+.about-section ol {
+  margin: var(--space-md) 0 var(--space-sm);
+  padding-left: var(--space-lg);
+  color: var(--color-text-secondary);
+  line-height: 1.8;
+}
+
+.about-section ol li {
+  margin-bottom: var(--space-xs);
+}
+
+.about-section .about-purpose {
+  margin-top: var(--space-lg);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--color-border-subtle);
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
+.about-section .attribution {
+  margin-top: var(--space-md);
+  padding-top: var(--space-md);
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.about-section .attribution a {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color var(--transition-fast);
+}
+
+.about-section .attribution a:hover {
+  color: var(--color-primary-hover);
+  text-decoration: underline;
 }
