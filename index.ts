@@ -29,22 +29,24 @@ function showModal(options: ModalOptions): Promise<boolean> {
     const confirmBtn = document.getElementById('alertConfirmBtn') as HTMLButtonElement;
     const cancelBtn = document.getElementById('alertCancelBtn') as HTMLButtonElement;
 
-    const type = options.type || 'info';
+    const type = options.type ?? 'info';
 
     // Set content
     icon.className = `alert-icon ${type}`;
     icon.textContent = ICONS[type];
     title.textContent = options.title;
     message.textContent = options.message;
-    confirmBtn.textContent = options.confirmText || 'OK';
-    cancelBtn.textContent = options.cancelText || 'Cancel';
+    confirmBtn.textContent = options.confirmText ?? 'OK';
+    cancelBtn.textContent = options.cancelText ?? 'Cancel';
     cancelBtn.style.display = options.showCancel ? 'inline-block' : 'none';
 
     // Show modal
     modal.style.display = 'flex';
 
     // Focus confirm button
-    setTimeout(() => confirmBtn.focus(), 50);
+    setTimeout(() => {
+      confirmBtn.focus();
+    }, 50);
 
     // Cleanup function
     const cleanup = () => {
@@ -328,7 +330,7 @@ export class App {
       this.showAddValueForm();
     });
     document.getElementById('saveNewValueBtn')?.addEventListener('click', () => {
-      this.saveNewValue();
+      void this.saveNewValue();
     });
     document.getElementById('cancelNewValueBtn')?.addEventListener('click', () => {
       this.hideAddValueForm();
@@ -341,81 +343,89 @@ export class App {
     });
 
     // Navigation buttons
-    document.getElementById('toPart2')?.addEventListener('click', async () => {
-      const newState = this.undoManager.getState();
-      // Check for unassigned cards before proceeding
-      const unassignedCount = newState.cards.filter((card) => card.column === 'unassigned').length;
-      if (unassignedCount > 0) {
-        await showAlert(
-          'Sort All Values',
-          `Please sort all ${unassignedCount} unassigned value(s) before proceeding to Part 2.`,
-          'warning',
-        );
-        return;
-      }
-      newState.currentPart = 'part2';
-      newState.cards = newState.cards
-        .filter((card) => card.column === 'veryImportant')
-        .map((card) => ({ ...card, column: 'unassigned' }));
-      this.updateState(newState); // Call updateState directly
+    document.getElementById('toPart2')?.addEventListener('click', () => {
+      void (async () => {
+        const newState = this.undoManager.getState();
+        // Check for unassigned cards before proceeding
+        const unassignedCount = newState.cards.filter((card) => card.column === 'unassigned').length;
+        if (unassignedCount > 0) {
+          await showAlert(
+            'Sort All Values',
+            `Please sort all ${unassignedCount} unassigned value(s) before proceeding to Part 2.`,
+            'warning',
+          );
+          return;
+        }
+        newState.currentPart = 'part2';
+        newState.cards = newState.cards
+          .filter((card) => card.column === 'veryImportant')
+          .map((card) => ({ ...card, column: 'unassigned' }));
+        this.updateState(newState); // Call updateState directly
+      })();
     });
-    document.getElementById('toPart3')?.addEventListener('click', async () => {
-      const newState = this.undoManager.getState();
-      // Check for unassigned cards before proceeding
-      const unassignedCount = newState.cards.filter((card) => card.column === 'unassigned').length;
-      if (unassignedCount > 0) {
-        await showAlert(
-          'Sort All Values',
-          `Please sort all ${unassignedCount} unassigned value(s) before proceeding.`,
-          'warning',
-        );
-        return;
-      }
-      const veryImportantCards = newState.cards.filter((c) => c.column === 'veryImportant');
-      const veryImportantCount = veryImportantCards.length;
+    document.getElementById('toPart3')?.addEventListener('click', () => {
+      void (async () => {
+        const newState = this.undoManager.getState();
+        // Check for unassigned cards before proceeding
+        const unassignedCount = newState.cards.filter((card) => card.column === 'unassigned').length;
+        if (unassignedCount > 0) {
+          await showAlert(
+            'Sort All Values',
+            `Please sort all ${unassignedCount} unassigned value(s) before proceeding.`,
+            'warning',
+          );
+          return;
+        }
+        const veryImportantCards = newState.cards.filter((c) => c.column === 'veryImportant');
+        const veryImportantCount = veryImportantCards.length;
 
-      if (veryImportantCount <= 5) {
+        if (veryImportantCount <= 5) {
+          newState.currentPart = 'part4';
+        } else {
+          newState.currentPart = 'part3';
+        }
+        // Move all "veryImportant" cards to "core" regardless of the next part
+        newState.cards = veryImportantCards.map((c, idx) => ({ ...c, column: 'core', order: idx }));
+
+        this.updateState(newState); // Call updateState directly
+      })();
+    });
+    document.getElementById('toPart4')?.addEventListener('click', () => {
+      void (async () => {
+        const newState = this.undoManager.getState();
+        const coreCount = newState.cards.filter((c) => c.column === 'core').length;
+        if (coreCount > 5) {
+          await showAlert(
+            'Too Many Core Values',
+            "You can only have 5 core values. Please move some values to 'Also Something I Want' before continuing.",
+            'warning',
+          );
+          return; // Don't update state if validation fails
+        }
         newState.currentPart = 'part4';
-      } else {
-        newState.currentPart = 'part3';
-      }
-      // Move all "veryImportant" cards to "core" regardless of the next part
-      newState.cards = veryImportantCards.map((c, idx) => ({ ...c, column: 'core', order: idx }));
-
-      this.updateState(newState); // Call updateState directly
+        this.updateState(newState); // Call updateState directly
+      })();
     });
-    document.getElementById('toPart4')?.addEventListener('click', async () => {
-      const newState = this.undoManager.getState();
-      const coreCount = newState.cards.filter((c) => c.column === 'core').length;
-      if (coreCount > 5) {
-        await showAlert(
-          'Too Many Core Values',
-          "You can only have 5 core values. Please move some values to 'Also Something I Want' before continuing.",
-          'warning',
-        );
-        return; // Don't update state if validation fails
-      }
-      newState.currentPart = 'part4';
-      this.updateState(newState); // Call updateState directly
-    });
-    document.getElementById('finish')?.addEventListener('click', async () => {
-      const newState = this.undoManager.getState();
-      // Check if all core values have statements
-      const coreCards = newState.cards.filter((c) => c.column === 'core');
-      const missingStatements = coreCards.filter((card) => !newState.finalStatements[card.id]?.trim());
+    document.getElementById('finish')?.addEventListener('click', () => {
+      void (async () => {
+        const newState = this.undoManager.getState();
+        // Check if all core values have statements
+        const coreCards = newState.cards.filter((c) => c.column === 'core');
+        const missingStatements = coreCards.filter((card) => !newState.finalStatements[card.id]?.trim());
 
-      if (missingStatements.length > 0) {
-        await showAlert(
-          'Missing Statements',
-          `Please provide a statement for all core values. Missing: ${missingStatements.map((c) => c.name).join(', ')}`,
-          'warning',
-        );
-        return; // Prevent transition
-      }
+        if (missingStatements.length > 0) {
+          await showAlert(
+            'Missing Statements',
+            `Please provide a statement for all core values. Missing: ${missingStatements.map((c) => c.name).join(', ')}`,
+            'warning',
+          );
+          return; // Prevent transition
+        }
 
-      // Original transition logic
-      newState.currentPart = 'review';
-      this.updateState(newState); // Call updateState directly
+        // Original transition logic
+        newState.currentPart = 'review';
+        this.updateState(newState); // Call updateState directly
+      })();
     });
     document.getElementById('restart')?.addEventListener('click', () => {
       const newState = this.defaultState();
@@ -446,28 +456,30 @@ export class App {
     });
 
     // --- Listener for the testing mode toggle button ---
-    document.getElementById('useLimitedValuesBtn')?.addEventListener('click', async () => {
-      const currentSet = this.undoManager.getState().valueSet;
-      if (currentSet !== 'limited') {
-        const confirmed = await showConfirm(
-          'Switch to Testing Mode',
-          'Switching to testing mode (10 values) will reset your current progress. Are you sure?',
-          'warning',
-        );
-        if (confirmed) {
-          this.toggleValueSet();
+    document.getElementById('useLimitedValuesBtn')?.addEventListener('click', () => {
+      void (async () => {
+        const currentSet = this.undoManager.getState().valueSet;
+        if (currentSet !== 'limited') {
+          const confirmed = await showConfirm(
+            'Switch to Testing Mode',
+            'Switching to testing mode (10 values) will reset your current progress. Are you sure?',
+            'warning',
+          );
+          if (confirmed) {
+            this.toggleValueSet();
+          }
+        } else {
+          // Already in limited mode, switch back to all
+          const confirmed = await showConfirm(
+            'Switch to Full Mode',
+            'Switching to full mode (all values) will reset your current progress. Are you sure?',
+            'warning',
+          );
+          if (confirmed) {
+            this.toggleValueSet();
+          }
         }
-      } else {
-        // Already in limited mode, switch back to all
-        const confirmed = await showConfirm(
-          'Switch to Full Mode',
-          'Switching to full mode (all values) will reset your current progress. Are you sure?',
-          'warning',
-        );
-        if (confirmed) {
-          this.toggleValueSet();
-        }
-      }
+      })();
     });
 
     // Undo/Redo buttons
@@ -491,18 +503,20 @@ export class App {
     });
 
     // Clear storage button (renamed to Restart exercise)
-    document.getElementById('clearStorageBtn')?.addEventListener('click', async () => {
-      const confirmed = await showConfirm(
-        'Restart Exercise',
-        'Are you sure you want to restart? All progress will be lost. This action cannot be undone.',
-        'error',
-      );
-      if (confirmed) {
-        localStorage.removeItem(this.storageKey);
-        // Reset to the default state using the *current* value set preference
-        const newState = this.defaultState(this.state.valueSet);
-        this.updateState(newState);
-      }
+    document.getElementById('clearStorageBtn')?.addEventListener('click', () => {
+      void (async () => {
+        const confirmed = await showConfirm(
+          'Restart Exercise',
+          'Are you sure you want to restart? All progress will be lost. This action cannot be undone.',
+          'error',
+        );
+        if (confirmed) {
+          localStorage.removeItem(this.storageKey);
+          // Reset to the default state using the *current* value set preference
+          const newState = this.defaultState(this.state.valueSet);
+          this.updateState(newState);
+        }
+      })();
     });
 
     // Set up drag and drop for card movement in all card-container elements.
@@ -526,7 +540,7 @@ export class App {
         const cardId = Number(dragEvent.dataTransfer?.getData('text/plain'));
         const targetColumn = container.parentElement!.getAttribute('data-column');
         if (targetColumn) {
-          this.moveCard(cardId, targetColumn);
+          void this.moveCard(cardId, targetColumn);
         }
       });
       container.addEventListener('dragend', () => {
@@ -542,7 +556,7 @@ export class App {
         if (this.selectedCardId !== null && e.target === container) {
           const targetColumn = container.parentElement?.getAttribute('data-column');
           if (targetColumn) {
-            this.moveCard(this.selectedCardId, targetColumn);
+            void this.moveCard(this.selectedCardId, targetColumn);
             this.selectedCardId = null; // Clear selection after move
           }
         }
@@ -621,6 +635,7 @@ export class App {
 
       descriptionElem.addEventListener('click', (e) => {
         e.stopPropagation(); // Prevent card drag start if clicking text
+        this.toggleCardSelection(card.id); // Also select card to show drop zones
         this.startEditingDescription(card.id);
       });
       descriptionContainer.appendChild(descriptionElem);
@@ -639,12 +654,10 @@ export class App {
 
     // Mobile tap-to-select functionality
     cardElem.addEventListener('click', (e) => {
-      // Don't trigger if clicking on description (for editing)
+      // Don't trigger if clicking on description (for editing) - but still allow selection
       if ((e.target as HTMLElement).classList.contains('card-description')) {
-        return;
-      }
-      // Don't trigger if editing description
-      if (this.state.editingDescriptionCardId !== null) {
+        // Also select the card when tapping the description area
+        this.toggleCardSelection(card.id);
         return;
       }
       this.toggleCardSelection(card.id);
@@ -666,12 +679,6 @@ export class App {
     } else {
       this.selectedCardId = cardId;
     }
-    this.render();
-  }
-
-  // Clear card selection
-  private clearSelection() {
-    this.selectedCardId = null;
     this.render();
   }
 
